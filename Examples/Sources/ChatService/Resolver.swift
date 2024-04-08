@@ -7,10 +7,6 @@ struct Context {
     let request: Request
 }
 
-extension ChatSchema {
-    typealias DateTime = Foundation.Date
-}
-
 struct Resolver: ChatResolver {
     let pubsub = AsyncPubSub()
 
