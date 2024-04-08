@@ -3,9 +3,11 @@
         {
             "namespace": "Chat",
             "additionalImports": [
-                "Pioneer",
-                "Vapor"
+                "Pioneer"
             ],
+            "typeMapping": {
+                "DateTime": "Foundation.Date"
+            },
             "schemaFiles": [
                 "Schemas/Chat.graphqls",
                 "Schemas/Federation.graphqls"

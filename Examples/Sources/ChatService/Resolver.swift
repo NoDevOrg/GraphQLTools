@@ -7,15 +7,15 @@ struct Context {
     let request: Request
 }
 
-extension ChatSchema {
-    typealias DateTime = Foundation.Date
-}
-
 struct Resolver: ChatResolver {
     let pubsub = AsyncPubSub()
 
     func history(context: Context, args: ChatSchema.HistoryArguments) async throws -> [ChatSchema.Message] {
         messageHistory[args.room] ?? []
+    }
+
+    func messageCount(context: Context, args: ChatSchema.MessageCountArguments) async throws -> Int {
+        messageHistory[args.room]?.count ?? 0
     }
 
     func sendMessage(context: Context, args: ChatSchema.SendMessageArguments) async throws -> ChatSchema.Message {

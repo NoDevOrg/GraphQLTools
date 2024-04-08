@@ -2,19 +2,35 @@ import Foundation
 import GraphQL
 
 extension Generator {
-    func swift(_ type: Type, prefix: String = "", nestedInNonNull: Bool = false) throws -> String {
+    func swift(_ type: Type, namespace: String = "", nestedInNonNull: Bool = false) throws -> String {
         return switch type {
         case let type as NamedType:
-            nestedInNonNull ? "\(prefix)\(type.name.value)" : "\(prefix)\(type.name.value)?"
+            if nestedInNonNull {
+                swiftTypeMapping(type.name.value, namespace: namespace)
+            } else {
+                "\(swiftTypeMapping(type.name.value, namespace: namespace))?"
+            }
         case let type as NonNullType:
-            try swift(type.type, prefix: prefix, nestedInNonNull: true)
+            try swift(type.type, namespace: namespace, nestedInNonNull: true)
         case let type as ListType:
-            try "[\(swift(type.type, prefix: prefix))]"
+            try "[\(swift(type.type, namespace: namespace))]"
         default:
             throw GeneratorError(description: "Cannot convert to swift type")
         }
     }
-    
+
+    func swiftTypeMapping(_ name: String, namespace: String) -> String {
+        if let knownType = wellKnownTypes[name] {
+            return knownType
+        } else {
+            if namespace.isEmpty {
+                return name
+            } else {
+                return "\(namespace).\(name)"
+            }
+        }
+    }
+
     var objects: [ObjectTypeDefinition] {
         definitions
             .compactMap { $0 as? ObjectTypeDefinition }

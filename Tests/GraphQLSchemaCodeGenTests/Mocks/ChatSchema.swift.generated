@@ -42,6 +42,11 @@ extension ChatSchema {
   """
 }
 
+// MARK: - Type Mapping
+extension ChatSchema {
+  typealias DateTime = Foundation.Date
+}
+
 // MARK: - Types
 extension ChatSchema {
   struct Message: Codable {

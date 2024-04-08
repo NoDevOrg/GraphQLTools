@@ -14,6 +14,9 @@ final class GeneratorTests: XCTestCase {
             additionalImports: [
                 "Pioneer"
             ],
+            typeMapping: [
+                "DateTime": "Foundation.Date"
+            ],
             schemas: [
                 topicsSchema,
                 federationSchema

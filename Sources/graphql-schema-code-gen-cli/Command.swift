@@ -4,27 +4,39 @@ import GraphQLSchemaCodeGen
 
 @main
 struct Command: AsyncParsableCommand {
-    @Option(help: "Namespace to use during code generation")
-    var namespace: String = "GraphQL"
+    @Option(help: "Namespace to use during code generation.")
+    var namespace: String = "Generated"
 
-    @Option(help: "Additional modules to import during code generation")
-    var importModules: String?
+    @Option(help: "Additional modules to import during code generation.")
+    var additionalImports: [String] = []
 
-    @Argument(
-        help: "Output File Path",
-        transform: URL.init(fileURLWithPath:)
+    @Option(
+        help: "Map generated types to custom types, formatted as `GeneratedTypeName:CustomType`.",
+        transform: { argument in
+            guard !argument.contains(" ") else { throw ValidationError("type mapping contains space") }
+            let parts = argument.split(separator: ":")
+            guard parts.count == 2 else { throw ValidationError("type mapping must be expressed as key:value") }
+            return (String(parts[0]), String(parts[1]))
+        }
     )
-    var outputPath: URL
+    var typeMapping: [(String, String)] = []
 
-    @Argument(
-        help: "Path to GraphQL schema files",
+    @Option(
+        help: "Path to GraphQL schema file",
         completion: .file(),
         transform: URL.init(fileURLWithPath:)
     )
-    var schemaPaths: [URL]
+    var schemaPath: [URL]
+
+    @Option(
+        help: "Output File Path, if left empty generated code will print to standard out.",
+        completion: .file(),
+        transform: URL.init(fileURLWithPath:)
+    )
+    var outputPath: URL?
 
     func run() async throws {
-        let schemas = try schemaPaths.map { path in
+        let schemas = try schemaPath.map { path in
             guard let file = try FileHandle(forReadingFrom: path).readToEnd() else {
                 throw ValidationError("Could not read file at \(path)")
             }
@@ -36,23 +48,32 @@ struct Command: AsyncParsableCommand {
             return value
         }
 
-        let additionalImports = (importModules ?? "").split(separator: " ").map { String($0) }
+        let typeMapping = Dictionary(uniqueKeysWithValues: self.typeMapping)
+        let generator = try Generator(
+            namespace: namespace,
+            additionalImports: additionalImports,
+            typeMapping: typeMapping,
+            schemas: schemas
+        )
 
-        let generator = try Generator(namespace: namespace, additionalImports: additionalImports, schemas: schemas)
+        guard let outputPath = outputPath else {
+            print(generator.code)
+            return
+        }
 
-        if let data = generator.code.data(using: .utf8) {
-            do {
-                if !FileManager.default.fileExists(atPath: outputPath.path()) {
-                    FileManager.default.createFile(atPath: outputPath.path, contents: data)
-                } else {
-                    try FileManager.default.removeItem(atPath: outputPath.path())
-                    FileManager.default.createFile(atPath: outputPath.path, contents: data)
-                }
-            } catch {
-                throw ValidationError("Could not write file")
+        guard let data = generator.code.data(using: .utf8) else {
+            throw ValidationError("Could not convert generated code to utf8. Please leave an issue at: https://github.com/NoDevOrg/GraphQLTools")
+        }
+
+        do {
+            if !FileManager.default.fileExists(atPath: outputPath.path()) {
+                FileManager.default.createFile(atPath: outputPath.path, contents: data)
+            } else {
+                try FileManager.default.removeItem(atPath: outputPath.path())
+                FileManager.default.createFile(atPath: outputPath.path, contents: data)
             }
-        } else {
-            throw ValidationError("Could not convert generated code to utf8")
+        } catch {
+            throw ValidationError("Could not write file to \(outputPath.path()).")
         }
     }
 }
