@@ -36,6 +36,9 @@ struct GraphQLSchemaCodeGenPlugin {
             /// Additional modules to import during code generation
             var additionalImports: [String]?
 
+            /// Map generated types to custom types
+            var typeMapping: [String: String]?
+
             /// An array of paths to `.graphqls` files for this invocation.
             var schemaFiles: [String]
         }
@@ -74,22 +77,30 @@ struct GraphQLSchemaCodeGenPlugin {
         var outputFiles = [Path]()
         var args = [String]()
 
-        if let additionalImports = invocation.additionalImports {
-            args.append("--import-modules=\(additionalImports.joined(separator: " "))")
-        }
-
         if let namespace = invocation.namespace {
             args.append("--namespace=\(namespace)")
             outputFiles.append(outputDirectory.appending("\(namespace)Schema.swift"))
-            args.append("\(outputDirectory.appending("\(namespace)Schema.swift").description)")
+            args.append("--output-path=\(outputDirectory.appending("\(namespace)Schema.swift").description)")
         } else {
-            outputFiles.append(outputDirectory.appending("GraphQLSchema.swift"))
-            args.append("\(outputDirectory.appending("GraphQLSchema.swift").description)")
+            outputFiles.append(outputDirectory.appending("GeneratedSchema.swift"))
+            args.append("--output-path=\(outputDirectory.appending("GeneratedSchema.swift").description)")
         }
 
-        for file in invocation.schemaFiles {
-            args.append(inputDirectory.appending(file).description)
-            inputFiles.append(inputDirectory.appending(file))
+        if let additionalImports = invocation.additionalImports {
+            for additionalImport in additionalImports {
+                args.append("--additional-imports=\(additionalImport)")
+            }
+        }
+
+        if let typeMapping = invocation.typeMapping {
+            for (key, value) in typeMapping {
+                args.append("--type-mapping=\(key):\(value)")
+            }
+        }
+
+        for schemaFile in invocation.schemaFiles {
+            args.append("--schema-path=\(inputDirectory.appending(schemaFile).description)")
+            inputFiles.append(inputDirectory.appending(schemaFile))
         }
 
         return Command.buildCommand(
