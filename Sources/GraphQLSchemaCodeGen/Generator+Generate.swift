@@ -7,6 +7,7 @@ extension Generator {
         printImports()
         printNamespace()
         printSDL()
+        printTypeMapping()
         try printObjectTypes()
         try printResolverArguments()
         try printResolverProtocol()
@@ -53,6 +54,16 @@ extension Generator {
             println("\"\"\"")
             println(schemas.joined(separator: "\n"), newLine: false)
             println("\"\"\"")
+        }
+        println()
+    }
+
+    func printTypeMapping() {
+        mark("Type Mapping")
+        scoped("extension \(namespace)Schema", scope: .curly) {
+            for (key, value) in typeMapping {
+                println("typealias \(key) = \(value)")
+            }
         }
         println()
     }
@@ -131,10 +142,10 @@ extension Generator {
         mark("Resolver Protocol")
         try scoped("protocol \(namespace)Resolver", scope: .curly) {
             for field in (queryResolverFields + mutationResolverFields) {
-                try println("func \(field.name.value)(context: Context, args: \(namespace)Schema.\(field.name.value.capitalizeFirst)Arguments) async throws -> \(swift(field.type, prefix: "\(namespace)Schema."))")
+                try println("func \(field.name.value)(context: Context, args: \(namespace)Schema.\(field.name.value.capitalizeFirst)Arguments) async throws -> \(swift(field.type, namespace: "\(namespace)Schema"))")
             }
             for field in subscriptionResolverFields {
-                try println("func \(field.name.value)(context: Context, args: \(namespace)Schema.\(field.name.value.capitalizeFirst)Arguments) async throws -> EventStream<\(swift(field.type, prefix: "\(namespace)Schema."))>")
+                try println("func \(field.name.value)(context: Context, args: \(namespace)Schema.\(field.name.value.capitalizeFirst)Arguments) async throws -> EventStream<\(swift(field.type, namespace: "\(namespace)Schema"))>")
             }
             for (object, keys) in objectsWithFederationKey {
                 if keys.count == 1 {

@@ -9,13 +9,22 @@ struct GeneratorError: Error {
 public class Generator {
     let namespace: String
     let additionalImports: [String]
+    let wellKnownTypes: [String: String]
+    let typeMapping: [String: String]
     let schemas: [String]
     let definitions: [Definition]
     private var printer: CodePrinter
 
-    public init(namespace: String, additionalImports: [String], schemas: [String]) throws {
+    public init(namespace: String, additionalImports: [String], typeMapping: [String: String], schemas: [String]) throws {
         self.namespace = namespace
         self.additionalImports = additionalImports
+        self.wellKnownTypes = [
+            "Int": "Int",
+            "Float": "Float",
+            "String": "String",
+            "Boolean": "Bool"
+        ]
+        self.typeMapping = typeMapping
         self.schemas = schemas
         self.printer = CodePrinter()
 
