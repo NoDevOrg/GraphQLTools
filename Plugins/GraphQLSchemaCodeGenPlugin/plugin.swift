@@ -115,9 +115,9 @@ struct GraphQLSchemaCodeGenPlugin {
     /// Validates the configuration file for various user errors.
     private func validateConfiguration(_ configuration: Configuration) throws {
         for invocation in configuration.invocations {
-            for protoFile in invocation.schemaFiles {
-                if !protoFile.hasSuffix(".graphqls") {
-                    throw PluginError.invalidInputFileExtension(protoFile)
+            for schemaFile in invocation.schemaFiles {
+                if !schemaFile.hasSuffix(".graphqls") {
+                    throw PluginError.invalidInputFileExtension(schemaFile)
                 }
             }
         }
