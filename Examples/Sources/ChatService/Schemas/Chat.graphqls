@@ -10,6 +10,7 @@ type Message @key(fields: "id") {
 
 type Query {
     history(room: String!): [Message!]!
+    messageCount(room: String!): Int!
 }
 
 type Mutation {

@@ -14,6 +14,10 @@ struct Resolver: ChatResolver {
         messageHistory[args.room] ?? []
     }
 
+    func messageCount(context: Context, args: ChatSchema.MessageCountArguments) async throws -> Int {
+        messageHistory[args.room]?.count ?? 0
+    }
+
     func sendMessage(context: Context, args: ChatSchema.SendMessageArguments) async throws -> ChatSchema.Message {
         let message = ChatSchema.Message(id: ID(uuid: UUID()), body: args.message, recieved: Date.now)
         var messages = messageHistory[args.room] ?? []
