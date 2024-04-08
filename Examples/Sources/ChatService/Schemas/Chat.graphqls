@@ -1,0 +1,21 @@
+"ISO8601 Formatted"
+scalar DateTime
+scalar ID
+
+type Message @key(fields: "id") {
+    id: ID!
+    body: String!
+    recieved: DateTime!
+}
+
+type Query {
+    history(room: String!): [Message!]!
+}
+
+type Mutation {
+    sendMessage(room: String!, message: String!): Message!
+}
+
+type Subscription {
+    messages(room: String!): Message!
+}

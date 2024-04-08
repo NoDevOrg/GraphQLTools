@@ -1,0 +1,15 @@
+{
+    "invocations": [
+        {
+            "namespace": "Chat",
+            "additionalImports": [
+                "Pioneer",
+                "Vapor"
+            ],
+            "schemaFiles": [
+                "Schemas/Chat.graphqls",
+                "Schemas/Federation.graphqls"
+            ]
+        }
+    ]
+}
