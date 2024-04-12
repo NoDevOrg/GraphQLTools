@@ -15,7 +15,7 @@ public class Generator {
     let definitions: [Definition]
     private var printer: CodePrinter
 
-    public init(namespace: String, additionalImports: [String], typeMapping: [String: String], schemas: [String]) throws {
+    public init(namespace: String = "Generated", additionalImports: [String] = [], typeMapping: [String: String] = [:], schemas: [String] = []) throws {
         self.namespace = namespace
         self.additionalImports = additionalImports
         self.wellKnownTypes = [
@@ -34,8 +34,6 @@ public class Generator {
         } catch {
             throw GeneratorError(description: "Parsing schemas failed. Underlying error: \(error)")
         }
-
-        try self.generate()
     }
 
     public var code: String { printer.content }

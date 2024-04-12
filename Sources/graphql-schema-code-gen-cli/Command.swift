@@ -49,12 +49,18 @@ struct Command: AsyncParsableCommand {
         }
 
         let typeMapping = Dictionary(uniqueKeysWithValues: self.typeMapping)
-        let generator = try Generator(
-            namespace: namespace,
-            additionalImports: additionalImports,
-            typeMapping: typeMapping,
-            schemas: schemas
-        )
+        let generator: Generator
+        do {
+            generator = try Generator(
+                namespace: namespace,
+                additionalImports: additionalImports,
+                typeMapping: typeMapping,
+                schemas: schemas
+            )
+            try generator.generate()
+        } catch {
+            throw ValidationError("Generator Error - underlying error: \(error)")
+        }
 
         guard let outputPath = outputPath else {
             print(generator.code)
