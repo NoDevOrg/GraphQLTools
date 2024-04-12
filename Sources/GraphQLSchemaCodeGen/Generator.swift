@@ -34,8 +34,6 @@ public class Generator {
         } catch {
             throw GeneratorError(description: "Parsing schemas failed. Underlying error: \(error)")
         }
-
-        try self.generate()
     }
 
     public var code: String { printer.content }
