@@ -15,7 +15,7 @@ public class Generator {
     let definitions: [Definition]
     private var printer: CodePrinter
 
-    public init(namespace: String, additionalImports: [String], typeMapping: [String: String], schemas: [String]) throws {
+    public init(namespace: String = "Generated", additionalImports: [String] = [], typeMapping: [String: String] = [:], schemas: [String] = []) throws {
         self.namespace = namespace
         self.additionalImports = additionalImports
         self.wellKnownTypes = [
