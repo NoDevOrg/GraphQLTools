@@ -5,12 +5,11 @@ scalar ID
 type Message @key(fields: "id") {
     id: ID!
     body: String!
-    recieved: DateTime!
+    received: DateTime!
 }
 
 type Query {
     history(room: String!): [Message!]!
-    messageCount(room: String!): Int!
 }
 
 type Mutation {
