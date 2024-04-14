@@ -4,9 +4,6 @@ import Vapor
 
 let application = try Application(.detect())
 
-// Too lazy to set up a database for this example
-var messageHistory = [String: [ChatSchema.Message]]()
-
 // Custom coders
 let coders = Coders()
 coders.encoder.dateEncodingStrategy = .iso8601
