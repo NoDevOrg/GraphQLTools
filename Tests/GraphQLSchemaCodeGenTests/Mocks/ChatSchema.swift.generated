@@ -12,6 +12,11 @@ import Pioneer
 
 enum ChatSchema {}
 
+// MARK: - Error
+struct ChatSchemaError: Error {
+  let description: String
+}
+
 // MARK: - SDL
 extension ChatSchema {
   static let sdl: String =
@@ -77,25 +82,46 @@ extension ChatSchema {
 }
 
 // MARK: - Resolver Protocol
-protocol ChatResolver {
-  func history(context: Context, args: ChatSchema.HistoryArguments) async throws -> [ChatSchema.Message]
-  func sendMessage(context: Context, args: ChatSchema.SendMessageArguments) async throws -> ChatSchema.Message
-  func messages(context: Context, args: ChatSchema.MessagesArguments) async throws -> EventStream<ChatSchema.Message>
-  func message(context: Context, key: ChatSchema.Message.Key) async throws -> ChatSchema.Message?
+extension ChatSchema {
+  protocol ChatResolver {
+    associatedtype ContextType
+
+    func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
+    func sendMessage(context: ContextType, args: SendMessageArguments) async throws -> Message
+    func messages(context: ContextType, args: MessagesArguments) async throws -> EventStream<Message>
+    func message(context: ContextType, key: Message.Key) async throws -> Message?
+  }
+}
+
+// MARK: - Resolver Default Implemention
+extension ChatSchema.ChatResolver {
+  func history(context: ContextType, args: ChatSchema.HistoryArguments) async throws -> [ChatSchema.Message] {
+    throw ChatSchemaError(description: "Resolver for query.history is unimplemented.")
+  }
+
+  func sendMessage(context: ContextType, args: ChatSchema.SendMessageArguments) async throws -> ChatSchema.Message {
+    throw ChatSchemaError(description: "Resolver for mutation.sendMessage is unimplemented.")
+  }
+
+  func messages(context: ContextType, args: ChatSchema.MessagesArguments) async throws -> EventStream<ChatSchema.Message> {
+    throw ChatSchemaError(description: "Resolver for subscription.messages is unimplemented.")
+  }
+
+  func message(context: ContextType, key: ChatSchema.Message.Key) async throws -> ChatSchema.Message? {
+    throw ChatSchemaError(description: "Resolver for federation.Message.Key is unimplemented.")
+  }
 }
 
 // MARK: - Schema Builder
 extension ChatSchema {
-  static func schema<Resolver>(coders: Coders = Coders()) throws -> Schema<Resolver, Context> where Resolver: ChatResolver {
-    try SchemaBuilder(Resolver.self, Context.self)
+  static func schema<Resolver>(coders: Coders = Coders()) throws -> Schema<Resolver, Resolver.ContextType> where Resolver: ChatResolver {
+    try SchemaBuilder(Resolver.self, Resolver.ContextType.self)
       .setCoders(to: coders)
       .setFederatedSDL(to: sdl)
       .add {
         Scalar(DateTime.self, as: "DateTime")
           .description("ISO8601 Formatted")
-
         Scalar(ID.self, as: "ID")
-
         Type(Message.self, as: "Message") {
           Field("id", at: \.id)
           Field("body", at: \.body)
