@@ -108,7 +108,7 @@ extension Generator {
                             }
                             println()
                             try scoped("func _\(field.name.value)<ContextType>(context: ContextType, args: \(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type))", scope: .curly) {
-                                scoped("guard let resolver = self as? \(data.schemaName).\(object.name.value).Resolver<ContextType> else", scope: .curly) {
+                                scoped("guard let resolver = self as? any \(data.schemaName).\(object.name.value).Resolver<ContextType> else", scope: .curly) {
                                     printThrowError("\(object.name.value).\(field.name.value) is unimplemented")
                                 }
                                 println()
