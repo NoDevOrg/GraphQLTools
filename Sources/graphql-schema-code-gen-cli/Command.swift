@@ -22,7 +22,7 @@ struct Command: AsyncParsableCommand {
     var typeMapping: [(String, String)] = []
 
     @Option(
-        help: "Path to GraphQL schema file",
+        help: "Path to GraphQL schema file. Multiple files can be used but they will be treated as a single schema.",
         completion: .file(),
         transform: URL.init(fileURLWithPath:)
     )
@@ -52,9 +52,11 @@ struct Command: AsyncParsableCommand {
         let generator: Generator
         do {
             generator = try Generator(
-                namespace: namespace,
-                additionalImports: additionalImports,
-                typeMapping: typeMapping,
+                options: GeneratorOptions(
+                    namespace: namespace,
+                    additionalImports: additionalImports,
+                    typeMapping: typeMapping
+                ),
                 schemas: schemas
             )
             try generator.generate()

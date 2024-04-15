@@ -1,25 +1,200 @@
 import Foundation
 import GraphQL
 
-extension Generator {
-    func swift(_ type: Type, namespace: String = "", nestedInNonNull: Bool = false) throws -> String {
-        return switch type {
-        case let type as NamedType:
-            if nestedInNonNull {
-                swiftTypeMapping(type.name.value, namespace: namespace)
-            } else {
-                "\(swiftTypeMapping(type.name.value, namespace: namespace))?"
-            }
-        case let type as NonNullType:
-            try swift(type.type, namespace: namespace, nestedInNonNull: true)
-        case let type as ListType:
-            try "[\(swift(type.type, namespace: namespace))]"
-        default:
-            throw GeneratorError(description: "Cannot convert to swift type")
+struct GeneratorData {
+    let schemaName: String
+    let resolverName: String
+    let objects: [ObjectTypeDefinition]
+    let inputs: [InputObjectTypeDefinition]
+    let enums: [EnumTypeDefinition]
+    let scalars: [ScalarTypeDefinition]
+    let interfaces: [InterfaceTypeDefinition]
+    let queryFields: [FieldDefinition]
+    let mutationFields: [FieldDefinition]
+    let subscriptionFields: [FieldDefinition]
+    let objectsWithFederationKeys: [(object: ObjectTypeDefinition, keys: [(name: String, fields: [String])])]
+
+    init(options: GeneratorOptions, schemas: [String]) throws {
+        self.schemaName = options.namespace + "Schema"
+        self.resolverName = options.namespace + "Resolver"
+
+        let definitions: [any Definition]
+        do {
+            let documents = try schemas.map { try parse(source: Source(body: $0)) }
+            definitions = documents.flatMap { $0.definitions }
+        } catch {
+            throw GeneratorError(description: "Parsing schemas failed. Underlying error: \(error)")
+        }
+
+        let operationTypes = definitions.schemas
+            .flatMap { $0.operationTypes }
+
+        let possibleQueryTypeNames = operationTypes
+            .filter { $0.operation == .query }
+            .map { $0.type.name.value }
+
+        guard possibleQueryTypeNames.count <= 1 else {
+            throw GeneratorError(description: "schema.query type is defined multiple times as: \(possibleQueryTypeNames)")
+        }
+
+        let possibleMutationTypeNames = operationTypes
+            .filter { $0.operation == .mutation }
+            .map { $0.type.name.value }
+
+        guard possibleMutationTypeNames.count <= 1 else {
+            throw GeneratorError(description: "schema.mutation type is defined multiple times as: \(possibleMutationTypeNames)")
+        }
+
+        let possibleSubscriptionTypeNames = operationTypes
+            .filter { $0.operation == .subscription }
+            .map { $0.type.name.value }
+
+        guard possibleSubscriptionTypeNames.count <= 1 else {
+            throw GeneratorError(description: "schema.subscription is defined multiple times as: \(possibleSubscriptionTypeNames)")
+        }
+        
+        let queryObjectName = possibleQueryTypeNames.first ?? "Query"
+        let mutationObjectName = possibleMutationTypeNames.first ?? "Mutation"
+        let subscriptionObjectName = possibleSubscriptionTypeNames.first ?? "Subscription"
+
+        self.objects = definitions.objects
+            .filter { ![queryObjectName, mutationObjectName, subscriptionObjectName].contains($0.name.value) }
+
+        self.inputs = definitions.inputs
+        self.enums = definitions.enums
+        self.scalars = definitions.scalars
+        self.interfaces = definitions.interfaces
+
+        self.queryFields = definitions.objects(named: queryObjectName).flatMap { $0.fields }
+        self.mutationFields = definitions.objects(named: mutationObjectName).flatMap { $0.fields }
+        self.subscriptionFields = definitions.objects(named: subscriptionObjectName).flatMap { $0.fields }
+        self.objectsWithFederationKeys = try definitions.objects
+            .map { try ($0, $0.federationKeys()) }
+            .filter { !$0.keys.isEmpty }
+    }
+}
+
+extension Array<any Definition> {
+    var schemas: [SchemaDefinition] {
+        self.compactMap {
+            if let schema = $0 as? SchemaDefinition { return schema }
+            if let schemaExtension = $0 as? SchemaExtensionDefinition { return schemaExtension.definition }
+            return nil
         }
     }
 
-    func swiftTypeMapping(_ name: String, namespace: String) -> String {
+    var objects: [ObjectTypeDefinition] {
+        self.compactMap {
+            if let object = $0 as? ObjectTypeDefinition { return object }
+            if let objectExtension = $0 as? TypeExtensionDefinition { return objectExtension.definition }
+            return nil
+        }
+    }
+
+    var inputs: [InputObjectTypeDefinition] {
+        self.compactMap {
+            if let input = $0 as? InputObjectTypeDefinition { return input }
+            if let inputExtension = $0 as? InputObjectExtensionDefinition { return inputExtension.definition }
+            return nil
+        }
+    }
+
+    var enums: [EnumTypeDefinition] {
+        self.compactMap {
+            if let `enum` = $0 as? EnumTypeDefinition { return `enum` }
+            if let enumExtension = $0 as? EnumExtensionDefinition { return enumExtension.definition }
+            return nil
+        }
+    }
+
+    var scalars: [ScalarTypeDefinition] {
+        self.compactMap {
+            if let scalar = $0 as? ScalarTypeDefinition { return scalar }
+            if let scalarExtension = $0 as? ScalarExtensionDefinition { return scalarExtension.definition }
+            return nil
+        }
+    }
+
+    var interfaces: [InterfaceTypeDefinition] {
+        self.compactMap {
+            if let interface = $0 as? InterfaceTypeDefinition { return interface }
+            if let interfaceExtension = $0 as? InterfaceExtensionDefinition { return interfaceExtension.definition }
+            return nil
+        }
+    }
+
+    func objects(named: String) -> [ObjectTypeDefinition] {
+        objects.filter { $0.name.value == named }
+    }
+}
+
+extension ObjectTypeDefinition {
+    func field(named: String) throws -> FieldDefinition {
+        guard let field = fields.first(where: { $0.name.value == named }) else {
+            throw GeneratorError(description: "Field \(named) not found on object \(name.value)")
+        }
+        return field
+    }
+
+    func federationKeys() throws -> [(name: String, fields: [String])] {
+        let keyDirectives = directives.filter { $0.name.value == "key" }
+        
+        if keyDirectives.count == 1 {
+            return try [("Key", keyDirectives[0].federationKeyFields())]
+        } else {
+            return try keyDirectives.enumerated().map {
+                try ("Key\($0.offset)", $0.element.federationKeyFields())
+            }
+        }
+    }
+}
+
+extension Directive {
+    func federationKeyFields() throws -> [String] {
+        guard let argument = arguments.first(where: { $0.name.value == "fields" }) else {
+            throw GeneratorError(description: "Key directive missing fields argument")
+        }
+        
+        guard let value = (argument.value as? StringValue)?.value else {
+            throw GeneratorError(description: "Key directive fields argument not a string")
+        }
+
+        guard !value.contains("{"), !value.contains("}") else {
+            throw GeneratorError(description: "Key directive does not support nested keys")
+        }
+
+        let fields = value.split(separator: " ")
+        guard !fields.isEmpty else {
+            throw GeneratorError(description: "Key directive fields argument is empty")
+        }
+
+        return fields.map { String($0) }
+    }
+}
+
+extension Generator {
+    func printThrowError(_ text: String) {
+        println("throw \(data.schemaName)Error(description: \"\(text)\")")
+    }
+
+    func swiftTypeName(_ type: Type, namespace: String = "", nestedInNonNull: Bool = false) throws -> String {
+        switch type {
+        case let type as NamedType:
+            if nestedInNonNull {
+                return swiftTypeMapping(type.name.value, namespace: namespace)
+            } else {
+                return "\(swiftTypeMapping(type.name.value, namespace: namespace))?"
+            }
+        case let type as NonNullType:
+            return try swiftTypeName(type.type, namespace: namespace, nestedInNonNull: true)
+        case let type as ListType:
+            return try "[\(swiftTypeName(type.type, namespace: namespace))]"
+        default:
+            throw GeneratorError(description: "Unknown type \(type) to convert to swift type")
+        }
+    }
+
+    private func swiftTypeMapping(_ name: String, namespace: String) -> String {
         if let knownType = wellKnownTypes[name] {
             return knownType
         } else {
@@ -30,59 +205,4 @@ extension Generator {
             }
         }
     }
-
-    var objects: [ObjectTypeDefinition] {
-        definitions
-            .compactMap { $0 as? ObjectTypeDefinition }
-            .filter { !["Query", "Mutation", "Subscription"].contains($0.name.value) }
-    }
-    
-    var objectsWithFederationKey: [(object: ObjectTypeDefinition, keys: [Directive])] {
-        objects
-            .map { ($0, $0.directives.filter { directive in directive.name.value == "key" }) }
-            .filter { !$0.keys.isEmpty}
-    }
-    
-    var scalars: [ScalarTypeDefinition] {
-        definitions
-            .compactMap { $0 as? ScalarTypeDefinition }
-    }
-    
-    // TODO: Support SchemeDefinition.OperationTypes for custom query object names
-    var queryObjects: [ObjectTypeDefinition] {
-        definitions
-            .compactMap { $0 as? ObjectTypeDefinition }
-            .filter { $0.name.value == "Query" }
-    }
-
-    // TODO: Support SchemeDefinition.OperationTypes for custom mutation object names
-    var mutationObjects: [ObjectTypeDefinition] {
-        definitions
-            .compactMap { $0 as? ObjectTypeDefinition }
-            .filter { $0.name.value == "Mutation" }
-    }
-
-    // TODO: Support SchemeDefinition.OperationTypes for custom subscription object names
-    var subscriptionObjects: [ObjectTypeDefinition] {
-        definitions
-            .compactMap { $0 as? ObjectTypeDefinition }
-            .filter { $0.name.value == "Subscription" }
-    }
-
-    var queryResolverFields: [FieldDefinition] {
-        queryObjects.flatMap { $0.fields }
-    }
-
-    var mutationResolverFields: [FieldDefinition] {
-        mutationObjects.flatMap { $0.fields }
-    }
-
-    var subscriptionResolverFields: [FieldDefinition] {
-        subscriptionObjects.flatMap { $0.fields }
-    }
-
-    var allResolverFields: [FieldDefinition] {
-       queryResolverFields + mutationResolverFields + subscriptionResolverFields
-    }
 }
-

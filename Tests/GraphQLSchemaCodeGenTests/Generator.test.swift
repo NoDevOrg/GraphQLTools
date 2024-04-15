@@ -42,6 +42,7 @@ final class GeneratorTests: XCTestCase {
 
         let expected =
         """
+
         import Foundation
         import GraphQL
         import Graphiti
@@ -52,11 +53,12 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testImportsCustomImports() throws {
-        let generator = try Generator(additionalImports: ["Pioneer", "Vapor"])
+        let generator = try Generator(options: GeneratorOptions(additionalImports: ["Pioneer", "Vapor"]))
         generator.printImports()
 
         let expected =
         """
+
         import Foundation
         import GraphQL
         import Graphiti
@@ -74,6 +76,7 @@ final class GeneratorTests: XCTestCase {
 
         let expected =
         """
+
         enum GeneratedSchema {}
 
         """
@@ -82,11 +85,12 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testNamespaceCustomNamespace() throws {
-        let generator = try Generator(namespace: "Chat")
+        let generator = try Generator(options: GeneratorOptions(namespace: "Chat"))
         generator.printNamespace()
 
         let expected =
         """
+
         enum ChatSchema {}
 
         """
@@ -100,6 +104,7 @@ final class GeneratorTests: XCTestCase {
 
         let expected =
         """
+
         // MARK: - SDL
         extension GeneratedSchema {
           static let sdl: String =
@@ -126,6 +131,7 @@ final class GeneratorTests: XCTestCase {
 
         let expected =
         """
+
         // MARK: - SDL
         extension GeneratedSchema {
           static let sdl: String =
@@ -153,15 +159,736 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testTypeMappingCustomMappings() throws {
-        let generator = try Generator(typeMapping: ["DateTime": "Foundation.Date", "LocalTime": "Foundation.String"])
+        let generator = try Generator(options: GeneratorOptions(typeMapping: ["DateTime": "Foundation.Date", "LocalTime": "Foundation.String"]))
         generator.printTypeMapping()
 
         let expected =
         """
+
         // MARK: - Type Mapping
         extension GeneratedSchema {
           typealias DateTime = Foundation.Date
           typealias LocalTime = Foundation.String
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testObjectTypes() throws {
+        let schema = 
+        """
+        type Message {
+            id: ID!
+            body: String!
+        }
+        """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+        """
+
+        // MARK: - Types
+        extension GeneratedSchema {
+          struct Message: Codable {
+            let id: ID
+            let body: String
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testObjectTypesComputedField() throws {
+        let schema =
+        """
+        type Message {
+            id: ID!
+            body: String!
+            viewedBy(userId: ID!): Bool
+        }
+        """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+        """
+
+        // MARK: - Types
+        extension GeneratedSchema {
+          struct Message: Codable {
+            let id: ID
+            let body: String
+
+            struct ViewedByArguments: Codable {
+              let userId: ID
+            }
+
+            func _viewedBy<ContextType>(context: ContextType, args: ViewedByArguments) async throws -> Bool? {
+              guard let resolver = self as? GeneratedSchema.Message.Resolver<ContextType> else {
+                throw GeneratedSchemaError(description: "Message.viewedBy is unimplemented")
+              }
+
+              return try await resolver.viewedBy(context: context, args: args)
+            }
+
+            protocol Resolver<ContextType> {
+              associatedtype ContextType
+
+              func viewedBy(context: ContextType, args: ViewedByArguments) async throws -> Bool?
+            }
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testObjectTypesMultipleComputedFields() throws {
+        let schema =
+        """
+        type Message {
+            id: ID!
+            body: String!
+            viewedBy(userId: ID!): Bool
+            likedBy(userId: ID!): Bool
+        }
+        """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+        """
+
+        // MARK: - Types
+        extension GeneratedSchema {
+          struct Message: Codable {
+            let id: ID
+            let body: String
+
+            struct ViewedByArguments: Codable {
+              let userId: ID
+            }
+
+            func _viewedBy<ContextType>(context: ContextType, args: ViewedByArguments) async throws -> Bool? {
+              guard let resolver = self as? GeneratedSchema.Message.Resolver<ContextType> else {
+                throw GeneratedSchemaError(description: "Message.viewedBy is unimplemented")
+              }
+
+              return try await resolver.viewedBy(context: context, args: args)
+            }
+
+            struct LikedByArguments: Codable {
+              let userId: ID
+            }
+
+            func _likedBy<ContextType>(context: ContextType, args: LikedByArguments) async throws -> Bool? {
+              guard let resolver = self as? GeneratedSchema.Message.Resolver<ContextType> else {
+                throw GeneratedSchemaError(description: "Message.likedBy is unimplemented")
+              }
+
+              return try await resolver.likedBy(context: context, args: args)
+            }
+
+            protocol Resolver<ContextType> {
+              associatedtype ContextType
+
+              func viewedBy(context: ContextType, args: ViewedByArguments) async throws -> Bool?
+              func likedBy(context: ContextType, args: LikedByArguments) async throws -> Bool?
+            }
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testObjectTypesWithFederationKey() throws {
+        let schema =
+        """
+        type Message @key(fields: "id") {
+            id: ID!
+            body: String!
+        }
+        """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+        """
+
+        // MARK: - Types
+        extension GeneratedSchema {
+          struct Message: Codable {
+            let id: ID
+            let body: String
+
+            struct Key: Codable {
+              let id: ID
+            }
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testObjectTypesWithMultipleFederationKey() throws {
+        let schema =
+        """
+        type Message @key(fields: "id") @key(fields: "hash") {
+            id: ID!
+            hash: String!
+            body: String!
+        }
+        """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+        """
+
+        // MARK: - Types
+        extension GeneratedSchema {
+          struct Message: Codable {
+            let id: ID
+            let hash: String
+            let body: String
+
+            struct Key0: Codable {
+              let id: ID
+            }
+
+            struct Key1: Codable {
+              let hash: String
+            }
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testObjectTypesWithComputedFieldsAndFederationKeys() throws {
+        let schema =
+        """
+        type Message @key(fields: "id") {
+            id: ID!
+            body: String!
+            viewedBy(userId: ID!): Bool
+        }
+        """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+        """
+
+        // MARK: - Types
+        extension GeneratedSchema {
+          struct Message: Codable {
+            let id: ID
+            let body: String
+
+            struct ViewedByArguments: Codable {
+              let userId: ID
+            }
+
+            func _viewedBy<ContextType>(context: ContextType, args: ViewedByArguments) async throws -> Bool? {
+              guard let resolver = self as? GeneratedSchema.Message.Resolver<ContextType> else {
+                throw GeneratedSchemaError(description: "Message.viewedBy is unimplemented")
+              }
+
+              return try await resolver.viewedBy(context: context, args: args)
+            }
+
+            protocol Resolver<ContextType> {
+              associatedtype ContextType
+
+              func viewedBy(context: ContextType, args: ViewedByArguments) async throws -> Bool?
+            }
+
+            struct Key: Codable {
+              let id: ID
+            }
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testObjectTypesWithInterfaces() throws {
+        let schema =
+        """
+        interface Node {
+          id: ID!
+        }
+
+        type Starship implements Node {
+          id: ID!
+          name: String!
+        }
+        """
+
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+        """
+
+        // MARK: - Types
+        extension GeneratedSchema {
+          struct Starship: Node, Codable {
+            let id: ID
+            let name: String
+          }
+
+          protocol Node {
+            var id: ID { get }
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testObjectResolverDefaultImplementation() throws {
+        let schema =
+        """
+        type Message {
+            id: ID!
+            body: String!
+            viewedBy(userId: ID!): Bool
+        }
+        """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectResolverDefaultImplementation()
+
+        let expected =
+        """
+
+        extension GeneratedSchema.Message.Resolver {
+          func viewedBy(context: ContextType, args: GeneratedSchema.Message.ViewedByArguments) async throws -> Bool? {
+            throw GeneratedSchemaError(description: "Message.viewedBy is unimplemented.")
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testInputObjectAndEnum() throws {
+        let schema =
+        """
+        type Message {
+            id: ID!
+            body: String!
+        }
+
+        input SendMessageInput {
+            body: String!
+        }
+
+        enum MessageType {
+          URGENT
+          NORMAL
+        }
+        """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+        """
+
+        // MARK: - Types
+        extension GeneratedSchema {
+          struct Message: Codable {
+            let id: ID
+            let body: String
+          }
+
+          struct SendMessageInput: Codable {
+            let body: String
+          }
+
+          enum MessageType: String, Codable {
+            case urgent = "URGENT"
+            case normal = "NORMAL"
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testResolverArguments() throws {
+        let schema =
+        """
+        type Query {
+            history(room: String!): [Message!]!
+        }
+
+        type Mutation {
+            sendMessage(room: String!, message: String!): Message!
+        }
+
+        type Subscription {
+            messages(room: String!): Message!
+        }
+        """
+
+        let generator = try Generator(schemas: [schema])
+        try generator.printResolverArguments()
+
+        let expected =
+        """
+
+        // MARK: - Resolver Arguments
+        extension GeneratedSchema {
+          struct HistoryArguments: Codable {
+            let room: String
+          }
+
+          struct SendMessageArguments: Codable {
+            let room: String
+            let message: String
+          }
+
+          struct MessagesArguments: Codable {
+            let room: String
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testResolverProtocol() throws {
+        let schema =
+        """
+        type Query {
+            history(room: String!): [Message!]!
+        }
+
+        type Mutation {
+            sendMessage(room: String!, message: String!): Message!
+        }
+
+        type Subscription {
+            messages(room: String!): Message!
+        }
+        """
+
+        let generator = try Generator(schemas: [schema])
+        try generator.printResolverProtocol()
+
+        let expected =
+        """
+
+        // MARK: - Resolver Protocol
+        extension GeneratedSchema {
+          protocol GeneratedResolver {
+            associatedtype ContextType
+
+            func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
+            func sendMessage(context: ContextType, args: SendMessageArguments) async throws -> Message
+            func messages(context: ContextType, args: MessagesArguments) async throws -> EventStream<Message>
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testResolverProtocolWithFederationKeys() throws {
+        let schema =
+        """
+        type Message @key(fields: "id") {
+            id: ID!
+            body: String!
+        }
+
+        type Query {
+            history(room: String!): [Message!]!
+        }
+
+        type Mutation {
+            sendMessage(room: String!, message: String!): Message!
+        }
+
+        type Subscription {
+            messages(room: String!): Message!
+        }
+        """
+
+        let generator = try Generator(schemas: [schema])
+        try generator.printResolverProtocol()
+
+        let expected =
+        """
+
+        // MARK: - Resolver Protocol
+        extension GeneratedSchema {
+          protocol GeneratedResolver {
+            associatedtype ContextType
+
+            func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
+            func sendMessage(context: ContextType, args: SendMessageArguments) async throws -> Message
+            func messages(context: ContextType, args: MessagesArguments) async throws -> EventStream<Message>
+            func message(context: ContextType, key: Message.Key) async throws -> Message?
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testResolverProtocolWithFederationMultipleKeys() throws {
+        let schema =
+        """
+        type Message @key(fields: "id") @key(fields: "hash") {
+            id: ID!
+            hash: String!
+            body: String!
+        }
+
+        type User @key(fields: "id") {
+            id: ID!
+        }
+
+        type Query {
+            history(room: String!): [Message!]!
+        }
+
+        type Mutation {
+            sendMessage(room: String!, message: String!): Message!
+        }
+
+        type Subscription {
+            messages(room: String!): Message!
+        }
+        """
+
+        let generator = try Generator(schemas: [schema])
+        try generator.printResolverProtocol()
+
+        let expected =
+        """
+
+        // MARK: - Resolver Protocol
+        extension GeneratedSchema {
+          protocol GeneratedResolver {
+            associatedtype ContextType
+
+            func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
+            func sendMessage(context: ContextType, args: SendMessageArguments) async throws -> Message
+            func messages(context: ContextType, args: MessagesArguments) async throws -> EventStream<Message>
+            func message(context: ContextType, key: Message.Key0) async throws -> Message?
+            func message(context: ContextType, key: Message.Key1) async throws -> Message?
+            func user(context: ContextType, key: User.Key) async throws -> User?
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testResolverProtocolDefaultImplementationWithFederationKey() throws {
+        let schema =
+        """
+        type Message @key(fields: "id") {
+            id: ID!
+            body: String!
+        }
+
+        type Query {
+            history(room: String!): [Message!]!
+        }
+
+        type Mutation {
+            sendMessage(room: String!, message: String!): Message!
+        }
+
+        type Subscription {
+            messages(room: String!): Message!
+        }
+        """
+
+        let generator = try Generator(schemas: [schema])
+        try generator.printResolverProtocolDefaultImplemention()
+
+        let expected =
+        """
+
+        // MARK: - Resolver Default Implemention
+        extension GeneratedSchema.GeneratedResolver {
+          func history(context: ContextType, args: GeneratedSchema.HistoryArguments) async throws -> [GeneratedSchema.Message] {
+            throw GeneratedSchemaError(description: "Resolver for query.history is unimplemented.")
+          }
+
+          func sendMessage(context: ContextType, args: GeneratedSchema.SendMessageArguments) async throws -> GeneratedSchema.Message {
+            throw GeneratedSchemaError(description: "Resolver for mutation.sendMessage is unimplemented.")
+          }
+
+          func messages(context: ContextType, args: GeneratedSchema.MessagesArguments) async throws -> EventStream<GeneratedSchema.Message> {
+            throw GeneratedSchemaError(description: "Resolver for subscription.messages is unimplemented.")
+          }
+
+          func message(context: ContextType, key: GeneratedSchema.Message.Key) async throws -> GeneratedSchema.Message? {
+            throw GeneratedSchemaError(description: "Resolver for federation.Message.Key is unimplemented.")
+          }
+        }
+        
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testSchemaBuilder() throws {
+        let schema =
+        """
+        scalar ID
+
+        type Message @key(fields: "id") {
+            id: ID!
+            body: String!
+            viewedBy(userId: ID!): Bool
+        }
+
+        input SendMessageInput {
+            room: String!
+            message: String!
+        }
+
+        enum MessageType {
+            URGENT
+            NORMAL
+        }
+
+        type Query {
+            history(room: String!): [Message!]!
+        }
+
+        type Mutation {
+            sendMessage(room: String!, message: String!): Message!
+        }
+
+        type Subscription {
+            messages(room: String!): Message!
+        }
+        """
+
+        let generator = try Generator(schemas: [schema])
+        try generator.printSchemaBuilder()
+
+        let expected =
+        """
+
+        // MARK: - Schema Builder
+        extension GeneratedSchema {
+          static func schema<Resolver>(coders: Coders = Coders()) throws -> Schema<Resolver, Resolver.ContextType> where Resolver: GeneratedResolver {
+            try SchemaBuilder(Resolver.self, Resolver.ContextType.self)
+              .setCoders(to: coders)
+              .setFederatedSDL(to: sdl)
+              .add {
+                Scalar(ID.self, as: "ID")
+                Type(Message.self, as: "Message") {
+                  Field("id", at: \\.id)
+                  Field("body", at: \\.body)
+                  Field("viewedBy", at: Message._viewedBy) {
+                    Argument("userId", at: \\.userId)
+                  }
+                }
+                .key(at: Resolver.message) {
+                  Argument("id", at: \\.id)
+                }
+                Input(SendMessageInput.self, as: "SendMessageInput") {
+                  InputField("room", at: \\.room)
+                  InputField("message", at: \\.message)
+                }
+                Enum(MessageType.self) {
+                  Value(.urgent)
+                  Value(.normal)
+                }
+              }
+              .addQuery {
+                Field("history", at: Resolver.history) {
+                  Argument("room", at: \\.room)
+                }
+              }
+              .addMutation {
+                Field("sendMessage", at: Resolver.sendMessage) {
+                  Argument("room", at: \\.room)
+                  Argument("message", at: \\.message)
+                }
+              }
+              .addSubscription {
+                SubscriptionField("messages", as: Message.self, atSub: Resolver.messages) {
+                  Argument("room", at: \\.room)
+                }
+              }
+              .build()
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testSchemaBuilderWithInterfaces() throws {
+        let schema =
+        """
+        interface Node {
+          id: ID!
+        }
+
+        type Starship implements Node {
+          id: ID!
+          name: String!
+        }
+        """
+
+        let generator = try Generator(schemas: [schema])
+        try generator.printSchemaBuilder()
+
+        let expected =
+        """
+
+        // MARK: - Schema Builder
+        extension GeneratedSchema {
+          static func schema<Resolver>(coders: Coders = Coders()) throws -> Schema<Resolver, Resolver.ContextType> where Resolver: GeneratedResolver {
+            try SchemaBuilder(Resolver.self, Resolver.ContextType.self)
+              .setCoders(to: coders)
+              .setFederatedSDL(to: sdl)
+              .add {
+                Type(Starship.self, as: "Starship", interfaces: [Node.self]) {
+                  Field("id", at: \\.id)
+                  Field("name", at: \\.name)
+                }
+                Interface(Node.self) {
+                  Field("id", at: \\.id)
+                }
+              }
+              .build()
+          }
         }
 
         """
@@ -175,13 +902,15 @@ final class GeneratorTests: XCTestCase {
         let expected = try Bundle.module.contents(forResource: "ChatSchema.swift", withExtension: "generated")
         
         let generator = try Generator(
-            namespace: "Chat",
-            additionalImports: [
-                "Pioneer"
-            ],
-            typeMapping: [
-                "DateTime": "Foundation.Date"
-            ],
+            options: GeneratorOptions(
+                namespace: "Chat",
+                additionalImports: [
+                    "Pioneer"
+                ],
+                typeMapping: [
+                    "DateTime": "Foundation.Date"
+                ]
+            ),
             schemas: [
                 topicsSchema,
                 federationSchema

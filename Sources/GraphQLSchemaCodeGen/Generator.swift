@@ -6,34 +6,39 @@ struct GeneratorError: Error {
     let description: String
 }
 
-public class Generator {
+/// Options passed in from the CLI
+public struct GeneratorOptions {
     let namespace: String
     let additionalImports: [String]
-    let wellKnownTypes: [String: String]
     let typeMapping: [String: String]
-    let schemas: [String]
-    let definitions: [Definition]
-    private var printer: CodePrinter
+    let generateDefaultImplementation: Bool
 
-    public init(namespace: String = "Generated", additionalImports: [String] = [], typeMapping: [String: String] = [:], schemas: [String] = []) throws {
+    public init(namespace: String = "Generated", additionalImports: [String] = [], typeMapping: [String: String] = [:], generateDefaultImplementation: Bool = true) {
         self.namespace = namespace
         self.additionalImports = additionalImports
+        self.typeMapping = typeMapping
+        self.generateDefaultImplementation = generateDefaultImplementation
+    }
+}
+
+public class Generator {
+    let wellKnownTypes: [String: String]
+    let schemas: [String]
+    let options: GeneratorOptions
+    let data: GeneratorData
+    private var printer: CodePrinter
+
+    public init(options: GeneratorOptions = GeneratorOptions(), schemas: [String] = []) throws {
         self.wellKnownTypes = [
             "Int": "Int",
             "Float": "Float",
             "String": "String",
             "Boolean": "Bool"
         ]
-        self.typeMapping = typeMapping
         self.schemas = schemas
+        self.options = options
+        self.data = try GeneratorData(options: options, schemas: schemas)
         self.printer = CodePrinter()
-
-        do {
-            let documents = try schemas.map { try parse(source: Source(body: $0)) }
-            self.definitions = documents.flatMap { $0.definitions }
-        } catch {
-            throw GeneratorError(description: "Parsing schemas failed. Underlying error: \(error)")
-        }
     }
 
     public var code: String { printer.content }
