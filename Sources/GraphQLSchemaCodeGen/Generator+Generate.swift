@@ -119,7 +119,7 @@ extension Generator {
                         println()
 
                         try scoped("protocol Resolver<ContextType>", scope: .curly) {
-                            println("associatedType ContextType")
+                            println("associatedtype ContextType")
                             println()
                             for field in computedFields {
                                 try println("func \(field.name.value)(context: ContextType, args: \(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type))")
