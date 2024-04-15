@@ -4,7 +4,7 @@ import Vapor
 
 let application = try Application(.detect())
 
-// Custom coders
+// Custom encoding/decoding strategies. Provided by Graphiti
 let coders = Coders()
 coders.encoder.dateEncodingStrategy = .iso8601
 coders.decoder.dateDecodingStrategy = .iso8601
@@ -14,13 +14,15 @@ let pioneer = Pioneer(
     resolver: Resolver()
 )
 
+// A custom context could be used where properties of the request
+// such as headers or references to Vapor's database connection pools.
 application.middleware.use(
     pioneer.vaporMiddleware(
-        context: { request, _ in
-            Context(request: request)
+        context: { _, _ in
+            NoContext()
         },
         websocketContext: { request, _, _ in
-            Context(request: request)
+            NoContext()
         }
     )
 )

@@ -2,20 +2,20 @@
 scalar DateTime
 scalar ID
 
-type Message @key(fields: "id") {
+type Message {
     id: ID!
     body: String!
     received: DateTime!
 }
 
 type Query {
-    history(room: String!): [Message!]!
+    listMessages(room: String!): [Message!]!
 }
 
 type Mutation {
-    sendMessage(room: String!, message: String!): Message!
+    sendMessage(room: String!, body: String!): Message!
 }
 
 type Subscription {
-    messages(room: String!): Message!
+    listenMessages(room: String!): Message!
 }
