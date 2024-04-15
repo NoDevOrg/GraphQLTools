@@ -89,7 +89,8 @@ extension Generator {
         mark("Types")
         try scoped("extension \(data.schemaName)", scope: .curly) {
             try looped(data.objects) { object in
-                try scoped("struct \(object.name.value): Codable", scope: .curly) {
+                let objectInterfaces = object.interfaces.map { $0.name.value } + ["Codable"]
+                try scoped("struct \(object.name.value): \(objectInterfaces.joined(separator: ", "))", scope: .curly) {
                     let basicFields = object.fields.filter { $0.arguments.isEmpty }
                     let computedFields = object.fields.filter { !$0.arguments.isEmpty }
 
@@ -154,6 +155,16 @@ extension Generator {
                     scoped("enum \(object.name.value): String, Codable", scope: .curly) {
                         for value in object.values {
                             println("case \(value.name.value.lowercased()) = \"\(value.name.value)\"")
+                        }
+                    }
+                }
+            }
+            if !data.interfaces.isEmpty {
+                println()
+                try looped(data.interfaces) { interface in
+                    try scoped("protocol \(interface.name.value)", scope: .curly) {
+                        for field in interface.fields {
+                            try println("var \(field.name.value): \(swiftTypeName(field.type)) { get }")
                         }
                     }
                 }
@@ -282,7 +293,15 @@ extension Generator {
                 }
             }
             for object in data.objects {
-                scoped("Type(\(object.name.value).self, as: \"\(object.name.value)\")", scope: .curly) {
+                let objectInterfaces = object.interfaces.map { "\($0.name.value).self" }
+                let typeDeclaration: String
+                if objectInterfaces.isEmpty {
+                    typeDeclaration = "Type(\(object.name.value).self, as: \"\(object.name.value)\")"
+                } else {
+                    typeDeclaration = "Type(\(object.name.value).self, as: \"\(object.name.value)\", interfaces: [\(objectInterfaces.joined(separator: ", "))])"
+                }
+
+                scoped(typeDeclaration, scope: .curly) {
                     for field in object.fields {
                         if field.arguments.isEmpty {
                             println("Field(\"\(field.name.value)\", at: \\.\(field.name.value))")
@@ -314,6 +333,13 @@ extension Generator {
                 scoped("Enum(\(object.name.value).self)", scope: .curly) {
                     for value in object.values {
                         println("Value(.\(value.name.value.lowercased()))")
+                    }
+                }
+            }
+            for interface in data.interfaces {
+                scoped("Interface(\(interface.name.value).self)", scope: .curly) {
+                    for field in interface.fields {
+                        println("Field(\"\(field.name.value)\", at: \\.\(field.name.value))")
                     }
                 }
             }
