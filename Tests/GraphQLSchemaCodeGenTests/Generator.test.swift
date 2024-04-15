@@ -237,7 +237,7 @@ final class GeneratorTests: XCTestCase {
             }
 
             protocol Resolver<ContextType> {
-              associatedType ContextType
+              associatedtype ContextType
 
               func viewedBy(context: ContextType, args: ViewedByArguments) async throws -> Bool?
             }
@@ -296,7 +296,7 @@ final class GeneratorTests: XCTestCase {
             }
 
             protocol Resolver<ContextType> {
-              associatedType ContextType
+              associatedtype ContextType
 
               func viewedBy(context: ContextType, args: ViewedByArguments) async throws -> Bool?
               func likedBy(context: ContextType, args: LikedByArguments) async throws -> Bool?
@@ -411,7 +411,7 @@ final class GeneratorTests: XCTestCase {
             }
 
             protocol Resolver<ContextType> {
-              associatedType ContextType
+              associatedtype ContextType
 
               func viewedBy(context: ContextType, args: ViewedByArguments) async throws -> Bool?
             }
@@ -419,6 +419,42 @@ final class GeneratorTests: XCTestCase {
             struct Key: Codable {
               let id: ID
             }
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testObjectTypesWithInterfaces() throws {
+        let schema =
+        """
+        interface Node {
+          id: ID!
+        }
+
+        type Starship implements Node {
+          id: ID!
+          name: String!
+        }
+        """
+
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+        """
+
+        // MARK: - Types
+        extension GeneratedSchema {
+          struct Starship: Node, Codable {
+            let id: ID
+            let name: String
+          }
+
+          protocol Node {
+            var id: ID { get }
           }
         }
 
@@ -806,6 +842,49 @@ final class GeneratorTests: XCTestCase {
               .addSubscription {
                 SubscriptionField("messages", as: Message.self, atSub: Resolver.messages) {
                   Argument("room", at: \\.room)
+                }
+              }
+              .build()
+          }
+        }
+
+        """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testSchemaBuilderWithInterfaces() throws {
+        let schema =
+        """
+        interface Node {
+          id: ID!
+        }
+
+        type Starship implements Node {
+          id: ID!
+          name: String!
+        }
+        """
+
+        let generator = try Generator(schemas: [schema])
+        try generator.printSchemaBuilder()
+
+        let expected =
+        """
+
+        // MARK: - Schema Builder
+        extension GeneratedSchema {
+          static func schema<Resolver>(coders: Coders = Coders()) throws -> Schema<Resolver, Resolver.ContextType> where Resolver: GeneratedResolver {
+            try SchemaBuilder(Resolver.self, Resolver.ContextType.self)
+              .setCoders(to: coders)
+              .setFederatedSDL(to: sdl)
+              .add {
+                Type(Starship.self, as: "Starship", interfaces: [Node.self]) {
+                  Field("id", at: \\.id)
+                  Field("name", at: \\.name)
+                }
+                Interface(Node.self) {
+                  Field("id", at: \\.id)
                 }
               }
               .build()
