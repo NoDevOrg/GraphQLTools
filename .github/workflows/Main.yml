@@ -15,7 +15,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ./build
-          key: graphqltools-spm-${{ hashFiles(Package.resolved) }}
+          key: graphqltools-spm-${{ hashFiles('Package.resolved') }}
           restore-keys: |
             graphqltools-spm-
       - name: Build
