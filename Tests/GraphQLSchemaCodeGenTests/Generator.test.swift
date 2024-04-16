@@ -229,7 +229,7 @@ final class GeneratorTests: XCTestCase {
             }
 
             func _viewedBy<ContextType>(context: ContextType, args: ViewedByArguments) async throws -> Bool? {
-              guard let resolver = self as? GeneratedSchema.Message.Resolver<ContextType> else {
+              guard let resolver = self as? any GeneratedSchema.Message.Resolver<ContextType> else {
                 throw GeneratedSchemaError(description: "Message.viewedBy is unimplemented")
               }
 
@@ -276,7 +276,7 @@ final class GeneratorTests: XCTestCase {
             }
 
             func _viewedBy<ContextType>(context: ContextType, args: ViewedByArguments) async throws -> Bool? {
-              guard let resolver = self as? GeneratedSchema.Message.Resolver<ContextType> else {
+              guard let resolver = self as? any GeneratedSchema.Message.Resolver<ContextType> else {
                 throw GeneratedSchemaError(description: "Message.viewedBy is unimplemented")
               }
 
@@ -288,7 +288,7 @@ final class GeneratorTests: XCTestCase {
             }
 
             func _likedBy<ContextType>(context: ContextType, args: LikedByArguments) async throws -> Bool? {
-              guard let resolver = self as? GeneratedSchema.Message.Resolver<ContextType> else {
+              guard let resolver = self as? any GeneratedSchema.Message.Resolver<ContextType> else {
                 throw GeneratedSchemaError(description: "Message.likedBy is unimplemented")
               }
 
@@ -403,7 +403,7 @@ final class GeneratorTests: XCTestCase {
             }
 
             func _viewedBy<ContextType>(context: ContextType, args: ViewedByArguments) async throws -> Bool? {
-              guard let resolver = self as? GeneratedSchema.Message.Resolver<ContextType> else {
+              guard let resolver = self as? any GeneratedSchema.Message.Resolver<ContextType> else {
                 throw GeneratedSchemaError(description: "Message.viewedBy is unimplemented")
               }
 
@@ -469,7 +469,7 @@ final class GeneratorTests: XCTestCase {
         type Message {
             id: ID!
             body: String!
-            viewedBy(userId: ID!): Bool
+            viewedBy(userId: ID!): Boolean
         }
         """
         let generator = try Generator(schemas: [schema])
