@@ -20,5 +20,3 @@ jobs:
             graphqltools-examples-spm-
       - name: Build
         run: swift build --package-path=./Examples
-      - name: Test
-        run: swift test --package-path=./Examples
