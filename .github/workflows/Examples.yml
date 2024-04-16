@@ -1,0 +1,24 @@
+name: GraphQLTools Examples Workflow
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Restore Cache
+        uses: actions/cache@v3
+        with:
+          path: ./build
+          key: graphqltools-examples-spm-${{ hashFiles(Examples/Package.resolved) }}
+          restore-keys: |
+            graphqltools-examples-spm-
+      - name: Build
+        run: swift build --package-path=./Examples
+      - name: Test
+        run: swift test --package-path=./Examples
