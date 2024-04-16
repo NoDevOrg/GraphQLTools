@@ -1,0 +1,5 @@
+# https://studio.apollographql.com/public/star-wars-swapi/variant/current/schema/sdl
+# The schema is missing scalars for ID and Float so adding them here.
+
+scalar ID
+scalar Float

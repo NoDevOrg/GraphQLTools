@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(name: "GraphQLTools")
 
 package.platforms = [
-    .macOS(.v13),
+    .macOS(.v13)
 ]
 
 package.dependencies = [
@@ -44,7 +44,7 @@ package.targets = [
         capability: .buildTool(),
         dependencies: [
             .target(name: "graphql-schema-code-gen-cli")
-    ]),
+        ]),
 ]
 
 package.products = [

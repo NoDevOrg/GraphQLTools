@@ -1,7 +1,7 @@
 import Foundation
-import Pioneer
-import Graphiti
 import GraphQL
+import Graphiti
+import Pioneer
 
 struct Resolver {
     let pubsub = AsyncPubSub()
@@ -17,14 +17,18 @@ extension Resolver: ChatSchema.ChatResolver {
 
 // MARK: - Query Resolvers
 extension Resolver {
-    func listMessages(context: NoContext, args: ChatSchema.ListMessagesArguments) async throws -> [ChatSchema.Message] {
+    func listMessages(context: NoContext, args: ChatSchema.ListMessagesArguments) async throws
+        -> [ChatSchema.Message]
+    {
         Database.roomToMessages[args.room] ?? []
     }
 }
 
 // MARK: - Mutation Resolvers
 extension Resolver {
-    func sendMessage(context: NoContext, args: ChatSchema.SendMessageArguments) async throws -> ChatSchema.Message {
+    func sendMessage(context: NoContext, args: ChatSchema.SendMessageArguments) async throws
+        -> ChatSchema.Message
+    {
         let message = ChatSchema.Message(id: ID(uuid: UUID()), body: args.body, received: .now)
         Database.insert(message: message, room: args.room)
         await pubsub.publish(for: args.room, payload: message)
@@ -34,7 +38,9 @@ extension Resolver {
 
 // MARK: - Subscription Resolvers
 extension Resolver {
-    func listenMessages(context: NoContext, args: ChatSchema.ListenMessagesArguments) async throws -> EventStream<ChatSchema.Message> {
+    func listenMessages(context: NoContext, args: ChatSchema.ListenMessagesArguments) async throws
+        -> EventStream<ChatSchema.Message>
+    {
         pubsub
             .asyncStream(for: args.room)
             .toEventStream()

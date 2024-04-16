@@ -1,0 +1,14 @@
+{
+    "invocations": [
+        {
+            "namespace": "StarWars",
+            "additionalImports": [
+                "Pioneer"
+            ],
+            "schemaFiles": [
+                "Schemas/Scalar.graphqls",
+                "Schemas/StarWars.graphqls"
+            ]
+        }
+    ]
+}

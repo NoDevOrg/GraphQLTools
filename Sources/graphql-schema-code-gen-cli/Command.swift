@@ -13,16 +13,21 @@ struct Command: AsyncParsableCommand {
     @Option(
         help: "Map generated types to custom types, formatted as `GeneratedTypeName:CustomType`.",
         transform: { argument in
-            guard !argument.contains(" ") else { throw ValidationError("type mapping contains space") }
+            guard !argument.contains(" ") else {
+                throw ValidationError("type mapping contains space")
+            }
             let parts = argument.split(separator: ":")
-            guard parts.count == 2 else { throw ValidationError("type mapping must be expressed as key:value") }
+            guard parts.count == 2 else {
+                throw ValidationError("type mapping must be expressed as key:value")
+            }
             return (String(parts[0]), String(parts[1]))
         }
     )
     var typeMapping: [(String, String)] = []
 
     @Option(
-        help: "Path to GraphQL schema file. Multiple files can be used but they will be treated as a single schema.",
+        help:
+            "Path to GraphQL schema file. Multiple files can be used but they will be treated as a single schema.",
         completion: .file(),
         transform: URL.init(fileURLWithPath:)
     )
@@ -68,7 +73,7 @@ struct Command: AsyncParsableCommand {
             print(generator.code)
             return
         }
-        
+
         do {
             try generator.code.write(to: outputPath, atomically: true, encoding: .utf8)
         } catch {
