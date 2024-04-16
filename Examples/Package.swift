@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(name: "Examples")
 
 package.platforms = [
-    .macOS(.v13),
+    .macOS(.v13)
 ]
 
 package.dependencies = [
@@ -16,18 +16,32 @@ package.targets = [
     .executableTarget(
         name: "ChatService",
         dependencies: [
-            .product(name: "Pioneer", package: "pioneer"),
+            .product(name: "Pioneer", package: "pioneer")
         ],
         resources: [
             .copy("Schemas"),
-            .copy("graphql-schema-codegen-config.json")
+            .copy("graphql-schema-codegen-config.json"),
         ],
         plugins: [
-            .plugin(name: "GraphQLSchemaCodeGenPlugin", package: "GraphQLTools"),
+            .plugin(name: "GraphQLSchemaCodeGenPlugin", package: "GraphQLTools")
+        ]
+    ),
+    .executableTarget(
+        name: "StarWarsAPI",
+        dependencies: [
+            .product(name: "Pioneer", package: "pioneer")
+        ],
+        resources: [
+            .copy("Schemas"),
+            .copy("graphql-schema-codegen-config.json"),
+        ],
+        plugins: [
+            .plugin(name: "GraphQLSchemaCodeGenPlugin", package: "GraphQLTools")
         ]
     ),
 ]
 
 package.products = [
     .executable(name: "ChatService", targets: ["ChatService"]),
+    .executable(name: "StarWarsAPI", targets: ["StarWarsAPI"]),
 ]

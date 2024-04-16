@@ -19,9 +19,9 @@ struct GraphQLSchemaCodeGenPlugin {
                 return "The input file '\(path)' does not have a '.graphqls' extension."
             case let .noConfigFound(path):
                 return """
-              No configuration file found named '\(path)'. The file must not be listed in the \
-              'exclude:' argument for the target in Package.swift.
-              """
+                    No configuration file found named '\(path)'. The file must not be listed in the \
+                    'exclude:' argument for the target in Package.swift.
+                    """
             }
         }
     }
@@ -49,8 +49,15 @@ struct GraphQLSchemaCodeGenPlugin {
 
     static let configurationFileName = "graphql-schema-codegen-config.json"
 
-    func createBuildCommands(pluginWorkDirectory: PackagePlugin.Path, sourceFiles: FileList, tool: (String) throws -> PackagePlugin.PluginContext.Tool) throws -> [Command] {
-        guard let configurationFilePath = sourceFiles.first(where: {$0.path.lastComponent == Self.configurationFileName})?.path else {
+    func createBuildCommands(
+        pluginWorkDirectory: PackagePlugin.Path, sourceFiles: FileList,
+        tool: (String) throws -> PackagePlugin.PluginContext.Tool
+    ) throws -> [Command] {
+        guard
+            let configurationFilePath = sourceFiles.first(where: {
+                $0.path.lastComponent == Self.configurationFileName
+            })?.path
+        else {
             throw PluginError.noConfigFound(Self.configurationFileName)
         }
 
@@ -72,7 +79,10 @@ struct GraphQLSchemaCodeGenPlugin {
         }
     }
 
-    private func invokeCLI(invocation: Configuration.Invocation, cliPath: Path, inputDirectory: Path, outputDirectory: Path) -> Command {
+    private func invokeCLI(
+        invocation: Configuration.Invocation, cliPath: Path, inputDirectory: Path,
+        outputDirectory: Path
+    ) -> Command {
         var inputFiles = [Path]()
         var outputFiles = [Path]()
         var args = [String]()
@@ -80,10 +90,13 @@ struct GraphQLSchemaCodeGenPlugin {
         if let namespace = invocation.namespace {
             args.append("--namespace=\(namespace)")
             outputFiles.append(outputDirectory.appending("\(namespace)Schema.swift"))
-            args.append("--output-path=\(outputDirectory.appending("\(namespace)Schema.swift").description)")
+            args.append(
+                "--output-path=\(outputDirectory.appending("\(namespace)Schema.swift").description)"
+            )
         } else {
             outputFiles.append(outputDirectory.appending("GeneratedSchema.swift"))
-            args.append("--output-path=\(outputDirectory.appending("GeneratedSchema.swift").description)")
+            args.append(
+                "--output-path=\(outputDirectory.appending("GeneratedSchema.swift").description)")
         }
 
         if let additionalImports = invocation.additionalImports {
@@ -125,32 +138,36 @@ struct GraphQLSchemaCodeGenPlugin {
 }
 
 #if canImport(PackagePlugin)
-import PackagePlugin
+    import PackagePlugin
 
-extension GraphQLSchemaCodeGenPlugin: BuildToolPlugin {
-    func createBuildCommands(context: PluginContext, target: any Target) async throws -> [Command] {
-        guard let swiftTarget = target as? SwiftSourceModuleTarget else {
-            throw PluginError.invalidTarget(target)
+    extension GraphQLSchemaCodeGenPlugin: BuildToolPlugin {
+        func createBuildCommands(context: PluginContext, target: any Target) async throws
+            -> [Command]
+        {
+            guard let swiftTarget = target as? SwiftSourceModuleTarget else {
+                throw PluginError.invalidTarget(target)
+            }
+            return try self.createBuildCommands(
+                pluginWorkDirectory: context.pluginWorkDirectory,
+                sourceFiles: swiftTarget.sourceFiles,
+                tool: context.tool
+            )
         }
-        return try self.createBuildCommands(
-            pluginWorkDirectory: context.pluginWorkDirectory,
-            sourceFiles: swiftTarget.sourceFiles,
-            tool: context.tool
-        )
     }
-}
 #endif
 
 #if canImport(XcodeProjectPlugin)
-import XcodeProjectPlugin
+    import XcodeProjectPlugin
 
-extension GraphQLSchemaCodeGenPlugin: XcodeBuildToolPlugin {
-    func createBuildCommands(context: XcodePluginContext, target: XcodeTarget) throws -> [Command] {
-        return try self.createBuildCommands(
-            pluginWorkDirectory: context.pluginWorkDirectory,
-            sourceFiles: target.inputFiles,
-            tool: context.tool
-        )
+    extension GraphQLSchemaCodeGenPlugin: XcodeBuildToolPlugin {
+        func createBuildCommands(context: XcodePluginContext, target: XcodeTarget) throws
+            -> [Command]
+        {
+            return try self.createBuildCommands(
+                pluginWorkDirectory: context.pluginWorkDirectory,
+                sourceFiles: target.inputFiles,
+                tool: context.tool
+            )
+        }
     }
-}
 #endif

@@ -12,7 +12,8 @@ struct GeneratorData {
     let queryFields: [FieldDefinition]
     let mutationFields: [FieldDefinition]
     let subscriptionFields: [FieldDefinition]
-    let objectsWithFederationKeys: [(object: ObjectTypeDefinition, keys: [(name: String, fields: [String])])]
+    let objectsWithFederationKeys:
+        [(object: ObjectTypeDefinition, keys: [(name: String, fields: [String])])]
 
     init(options: GeneratorOptions, schemas: [String]) throws {
         self.schemaName = options.namespace + "Schema"
@@ -29,36 +30,50 @@ struct GeneratorData {
         let operationTypes = definitions.schemas
             .flatMap { $0.operationTypes }
 
-        let possibleQueryTypeNames = operationTypes
+        let possibleQueryTypeNames =
+            operationTypes
             .filter { $0.operation == .query }
             .map { $0.type.name.value }
 
         guard possibleQueryTypeNames.count <= 1 else {
-            throw GeneratorError(description: "schema.query type is defined multiple times as: \(possibleQueryTypeNames)")
+            throw GeneratorError(
+                description:
+                    "schema.query type is defined multiple times as: \(possibleQueryTypeNames)")
         }
 
-        let possibleMutationTypeNames = operationTypes
+        let possibleMutationTypeNames =
+            operationTypes
             .filter { $0.operation == .mutation }
             .map { $0.type.name.value }
 
         guard possibleMutationTypeNames.count <= 1 else {
-            throw GeneratorError(description: "schema.mutation type is defined multiple times as: \(possibleMutationTypeNames)")
+            throw GeneratorError(
+                description:
+                    "schema.mutation type is defined multiple times as: \(possibleMutationTypeNames)"
+            )
         }
 
-        let possibleSubscriptionTypeNames = operationTypes
+        let possibleSubscriptionTypeNames =
+            operationTypes
             .filter { $0.operation == .subscription }
             .map { $0.type.name.value }
 
         guard possibleSubscriptionTypeNames.count <= 1 else {
-            throw GeneratorError(description: "schema.subscription is defined multiple times as: \(possibleSubscriptionTypeNames)")
+            throw GeneratorError(
+                description:
+                    "schema.subscription is defined multiple times as: \(possibleSubscriptionTypeNames)"
+            )
         }
-        
+
         let queryObjectName = possibleQueryTypeNames.first ?? "Query"
         let mutationObjectName = possibleMutationTypeNames.first ?? "Mutation"
         let subscriptionObjectName = possibleSubscriptionTypeNames.first ?? "Subscription"
 
         self.objects = definitions.objects
-            .filter { ![queryObjectName, mutationObjectName, subscriptionObjectName].contains($0.name.value) }
+            .filter {
+                ![queryObjectName, mutationObjectName, subscriptionObjectName].contains(
+                    $0.name.value)
+            }
 
         self.inputs = definitions.inputs
         self.enums = definitions.enums
@@ -67,18 +82,22 @@ struct GeneratorData {
 
         self.queryFields = definitions.objects(named: queryObjectName).flatMap { $0.fields }
         self.mutationFields = definitions.objects(named: mutationObjectName).flatMap { $0.fields }
-        self.subscriptionFields = definitions.objects(named: subscriptionObjectName).flatMap { $0.fields }
+        self.subscriptionFields = definitions.objects(named: subscriptionObjectName).flatMap {
+            $0.fields
+        }
         self.objectsWithFederationKeys = try definitions.objects
             .map { try ($0, $0.federationKeys()) }
             .filter { !$0.keys.isEmpty }
     }
 }
 
-extension Array<any Definition> {
+extension [any Definition] {
     var schemas: [SchemaDefinition] {
         self.compactMap {
             if let schema = $0 as? SchemaDefinition { return schema }
-            if let schemaExtension = $0 as? SchemaExtensionDefinition { return schemaExtension.definition }
+            if let schemaExtension = $0 as? SchemaExtensionDefinition {
+                return schemaExtension.definition
+            }
             return nil
         }
     }
@@ -86,7 +105,9 @@ extension Array<any Definition> {
     var objects: [ObjectTypeDefinition] {
         self.compactMap {
             if let object = $0 as? ObjectTypeDefinition { return object }
-            if let objectExtension = $0 as? TypeExtensionDefinition { return objectExtension.definition }
+            if let objectExtension = $0 as? TypeExtensionDefinition {
+                return objectExtension.definition
+            }
             return nil
         }
     }
@@ -94,7 +115,9 @@ extension Array<any Definition> {
     var inputs: [InputObjectTypeDefinition] {
         self.compactMap {
             if let input = $0 as? InputObjectTypeDefinition { return input }
-            if let inputExtension = $0 as? InputObjectExtensionDefinition { return inputExtension.definition }
+            if let inputExtension = $0 as? InputObjectExtensionDefinition {
+                return inputExtension.definition
+            }
             return nil
         }
     }
@@ -102,7 +125,9 @@ extension Array<any Definition> {
     var enums: [EnumTypeDefinition] {
         self.compactMap {
             if let `enum` = $0 as? EnumTypeDefinition { return `enum` }
-            if let enumExtension = $0 as? EnumExtensionDefinition { return enumExtension.definition }
+            if let enumExtension = $0 as? EnumExtensionDefinition {
+                return enumExtension.definition
+            }
             return nil
         }
     }
@@ -110,7 +135,9 @@ extension Array<any Definition> {
     var scalars: [ScalarTypeDefinition] {
         self.compactMap {
             if let scalar = $0 as? ScalarTypeDefinition { return scalar }
-            if let scalarExtension = $0 as? ScalarExtensionDefinition { return scalarExtension.definition }
+            if let scalarExtension = $0 as? ScalarExtensionDefinition {
+                return scalarExtension.definition
+            }
             return nil
         }
     }
@@ -118,7 +145,9 @@ extension Array<any Definition> {
     var interfaces: [InterfaceTypeDefinition] {
         self.compactMap {
             if let interface = $0 as? InterfaceTypeDefinition { return interface }
-            if let interfaceExtension = $0 as? InterfaceExtensionDefinition { return interfaceExtension.definition }
+            if let interfaceExtension = $0 as? InterfaceExtensionDefinition {
+                return interfaceExtension.definition
+            }
             return nil
         }
     }
@@ -138,7 +167,7 @@ extension ObjectTypeDefinition {
 
     func federationKeys() throws -> [(name: String, fields: [String])] {
         let keyDirectives = directives.filter { $0.name.value == "key" }
-        
+
         if keyDirectives.count == 1 {
             return try [("Key", keyDirectives[0].federationKeyFields())]
         } else {
@@ -154,7 +183,7 @@ extension Directive {
         guard let argument = arguments.first(where: { $0.name.value == "fields" }) else {
             throw GeneratorError(description: "Key directive missing fields argument")
         }
-        
+
         guard let value = (argument.value as? StringValue)?.value else {
             throw GeneratorError(description: "Key directive fields argument not a string")
         }
@@ -177,7 +206,9 @@ extension Generator {
         println("throw \(data.schemaName)Error(description: \"\(text)\")")
     }
 
-    func swiftTypeName(_ type: Type, namespace: String = "", nestedInNonNull: Bool = false) throws -> String {
+    func swiftTypeName(_ type: Type, namespace: String = "", nestedInNonNull: Bool = false) throws
+        -> String
+    {
         switch type {
         case let type as NamedType:
             if nestedInNonNull {

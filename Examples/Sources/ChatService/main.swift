@@ -1,5 +1,5 @@
-import Pioneer
 import Graphiti
+import Pioneer
 import Vapor
 
 let application = try Application(.detect())

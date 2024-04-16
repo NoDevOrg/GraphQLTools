@@ -6,7 +6,10 @@ struct BundleError: Error {
 
 extension Bundle {
     func contents(forResource: String, withExtension: String) throws -> String {
-        guard let url = url(forResource: forResource, withExtension: withExtension, subdirectory: "Mocks") else {
+        guard
+            let url = url(
+                forResource: forResource, withExtension: withExtension, subdirectory: "Mocks")
+        else {
             throw BundleError(description: "Could not find url for \(forResource).\(withExtension)")
         }
 

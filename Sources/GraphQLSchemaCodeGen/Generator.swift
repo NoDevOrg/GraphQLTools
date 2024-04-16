@@ -13,7 +13,10 @@ public struct GeneratorOptions {
     let typeMapping: [String: String]
     let generateDefaultImplementation: Bool
 
-    public init(namespace: String = "Generated", additionalImports: [String] = [], typeMapping: [String: String] = [:], generateDefaultImplementation: Bool = true) {
+    public init(
+        namespace: String = "Generated", additionalImports: [String] = [],
+        typeMapping: [String: String] = [:], generateDefaultImplementation: Bool = true
+    ) {
         self.namespace = namespace
         self.additionalImports = additionalImports
         self.typeMapping = typeMapping
@@ -33,7 +36,7 @@ public class Generator {
             "Int": "Int",
             "Float": "Float",
             "String": "String",
-            "Boolean": "Bool"
+            "Boolean": "Bool",
         ]
         self.schemas = schemas
         self.options = options
@@ -48,7 +51,7 @@ public class Generator {
 extension Generator {
     func println(_ text: String = "", newLine: Bool = true) {
         self.printer.print(text)
-        
+
         if newLine {
             self.printer.print("\n")
         }
