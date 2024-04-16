@@ -68,20 +68,11 @@ struct Command: AsyncParsableCommand {
             print(generator.code)
             return
         }
-
-        guard let data = generator.code.data(using: .utf8) else {
-            throw ValidationError("Could not convert generated code to utf8. Please leave an issue at: https://github.com/NoDevOrg/GraphQLTools")
-        }
-
+        
         do {
-            if !FileManager.default.fileExists(atPath: outputPath.path()) {
-                FileManager.default.createFile(atPath: outputPath.path, contents: data)
-            } else {
-                try FileManager.default.removeItem(atPath: outputPath.path())
-                FileManager.default.createFile(atPath: outputPath.path, contents: data)
-            }
+            try generator.code.write(to: outputPath, atomically: true, encoding: .utf8)
         } catch {
-            throw ValidationError("Could not write file to \(outputPath.path()).")
+            throw ValidationError("Could not write file to \(outputPath).")
         }
     }
 }
