@@ -1,0 +1,32 @@
+import Foundation
+import Graphiti
+
+extension StarWarsSchema.Species: StarWarsSchema.Species.Resolver {
+    typealias ContextType = Context
+
+    func filmConnection(context: Context, args: FilmConnectionArguments) async throws -> StarWarsSchema.SpeciesFilmsConnection? {
+        let connection = try context.database.films
+            .filter { $0.specieIds.contains(self.id.string) }
+            .connection(from: args)
+
+        return StarWarsSchema.SpeciesFilmsConnection(
+            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database))},
+            films: connection.edges.map { $0.node.graphql(database: context.database)},
+            pageInfo: connection.pageInfo.graphql,
+            totalCount: connection.total
+        )
+    }
+
+    func personConnection(context: Context, args: PersonConnectionArguments) async throws -> StarWarsSchema.SpeciesPeopleConnection? {
+        let connection = try context.database.people
+            .filter { $0.speciesIds.contains(self.id.string) }
+            .connection(from: args)
+
+        return StarWarsSchema.SpeciesPeopleConnection(
+            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database))},
+            pageInfo: connection.pageInfo.graphql,
+            people: connection.edges.map { $0.node.graphql(database: context.database)},
+            totalCount: connection.total
+        )
+    }
+}

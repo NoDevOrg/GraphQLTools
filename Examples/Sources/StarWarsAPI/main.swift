@@ -12,10 +12,7 @@ let pioneer = Pioneer(
 application.middleware.use(
     pioneer.vaporMiddleware(
         context: { request, _ in
-            Context(request: request)
-        },
-        websocketContext: { request, _, _ in
-            Context(request: request)
+            Context(database: request.database)
         }
     )
 )
