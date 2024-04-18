@@ -12,8 +12,7 @@ struct GeneratorData {
     let queryFields: [FieldDefinition]
     let mutationFields: [FieldDefinition]
     let subscriptionFields: [FieldDefinition]
-    let objectsWithFederationKeys:
-        [(object: ObjectTypeDefinition, keys: [(name: String, fields: [String])])]
+    let objectsWithFederationKeys: [(object: ObjectTypeDefinition, keys: [(name: String, fields: [String])])]
 
     init(options: GeneratorOptions, schemas: [String]) throws {
         self.schemaName = options.namespace + "Schema"

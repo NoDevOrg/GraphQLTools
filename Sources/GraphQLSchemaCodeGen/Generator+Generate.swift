@@ -202,8 +202,7 @@ extension Generator {
             let computedFields = object.fields.filter { !$0.arguments.isEmpty }
             guard !computedFields.isEmpty else { continue }
             println()
-            try scoped("extension \(data.schemaName).\(object.name.value).Resolver", scope: .curly)
-            {
+            try scoped("extension \(data.schemaName).\(object.name.value).Resolver", scope: .curly) {
                 try looped(computedFields) { field in
                     try scoped(
                         "func \(field.name.value)(context: ContextType, args: \(data.schemaName).\(object.name.value).\(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type, namespace: data.schemaName))",
