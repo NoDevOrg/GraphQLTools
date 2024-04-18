@@ -33,15 +33,35 @@ package.targets = [
         ],
         resources: [
             .copy("Schemas"),
+            .copy("Database.json"),
             .copy("graphql-schema-codegen-config.json"),
         ],
         plugins: [
             .plugin(name: "GraphQLSchemaCodeGenPlugin", package: "GraphQLTools")
         ]
     ),
+    .plugin(
+        name: "StarWarsAPIDownload",
+        capability: .command(
+            intent: .custom(
+                verb: "download-swapi",
+                description: "Downloads data from swapi.dev to use in StarWarsAPI example"
+            ),
+            permissions: [
+                .writeToPackageDirectory(
+                    reason: "Writes a file to act as a data for StarWarsAPI example"
+                ),
+                .allowNetworkConnections(
+                    scope: .all(ports: [443]),
+                    reason: "Need to connect to swapi.dev to download data"
+                ),
+            ]
+        )
+    ),
 ]
 
 package.products = [
     .executable(name: "ChatService", targets: ["ChatService"]),
     .executable(name: "StarWarsAPI", targets: ["StarWarsAPI"]),
+    .plugin(name: "StarWarsAPIDownload", targets: ["StarWarsAPIDownload"]),
 ]
