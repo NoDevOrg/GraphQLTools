@@ -41,7 +41,6 @@ extension Database.Species: Identifiable, PaginatableEntity {
     var cursor: String { String(url.hashValue) }
     var peopleIds: [String] { people.compactMap { $0.entityId() } }
     var filmIds: [String] { films.compactMap { $0.entityId() } }
-
 }
 
 extension Database.Planet: Identifiable, PaginatableEntity {

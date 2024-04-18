@@ -1,13 +1,6 @@
 import Foundation
 import Graphiti
 
-//extension StarWarsSchema.Film: Identifiable {}
-//extension StarWarsSchema.Person: Identifiable {}
-//extension StarWarsSchema.Planet: Identifiable {}
-//extension StarWarsSchema.Species: Identifiable {}
-//extension StarWarsSchema.Starship: Identifiable {}
-//extension StarWarsSchema.Vehicle: Identifiable {}
-
 extension StarWarsSchema.AllFilmsArguments: Paginatable {}
 extension StarWarsSchema.AllPeopleArguments: Paginatable {}
 extension StarWarsSchema.AllPlanetsArguments: Paginatable {}
