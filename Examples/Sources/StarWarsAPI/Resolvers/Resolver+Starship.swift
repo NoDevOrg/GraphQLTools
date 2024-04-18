@@ -10,8 +10,8 @@ extension StarWarsSchema.Starship: StarWarsSchema.Starship.Resolver {
             .connection(from: args)
 
         return StarWarsSchema.StarshipFilmsConnection(
-            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database))},
-            films: connection.edges.map { $0.node.graphql(database: context.database)},
+            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database)) },
+            films: connection.edges.map { $0.node.graphql(database: context.database) },
             pageInfo: connection.pageInfo.graphql,
             totalCount: connection.total
         )
@@ -23,9 +23,9 @@ extension StarWarsSchema.Starship: StarWarsSchema.Starship.Resolver {
             .connection(from: args)
 
         return StarWarsSchema.StarshipPilotsConnection(
-            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database))},
+            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database)) },
             pageInfo: connection.pageInfo.graphql,
-            pilots: connection.edges.map { $0.node.graphql(database: context.database)},
+            pilots: connection.edges.map { $0.node.graphql(database: context.database) },
             totalCount: connection.total
         )
     }

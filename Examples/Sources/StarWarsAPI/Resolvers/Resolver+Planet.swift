@@ -10,8 +10,8 @@ extension StarWarsSchema.Planet: StarWarsSchema.Planet.Resolver {
             .connection(from: args)
 
         return StarWarsSchema.PlanetFilmsConnection(
-            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database))},
-            films: connection.edges.map { $0.node.graphql(database: context.database)},
+            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database)) },
+            films: connection.edges.map { $0.node.graphql(database: context.database) },
             pageInfo: connection.pageInfo.graphql,
             totalCount: connection.total
         )
@@ -23,9 +23,9 @@ extension StarWarsSchema.Planet: StarWarsSchema.Planet.Resolver {
             .connection(from: args)
 
         return StarWarsSchema.PlanetResidentsConnection(
-            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database))},
+            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database)) },
             pageInfo: connection.pageInfo.graphql,
-            residents: connection.edges.map { $0.node.graphql(database: context.database)},
+            residents: connection.edges.map { $0.node.graphql(database: context.database) },
             totalCount: connection.total
         )
     }

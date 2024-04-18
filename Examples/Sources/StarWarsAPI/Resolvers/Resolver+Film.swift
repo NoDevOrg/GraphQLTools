@@ -10,8 +10,8 @@ extension StarWarsSchema.Film: StarWarsSchema.Film.Resolver {
             .connection(from: args)
 
         return StarWarsSchema.FilmCharactersConnection(
-            characters: connection.edges.map { $0.node.graphql(database: context.database)},
-            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database))},
+            characters: connection.edges.map { $0.node.graphql(database: context.database) },
+            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database)) },
             pageInfo: connection.pageInfo.graphql,
             totalCount: connection.total
         )
@@ -23,9 +23,9 @@ extension StarWarsSchema.Film: StarWarsSchema.Film.Resolver {
             .connection(from: args)
 
         return StarWarsSchema.FilmPlanetsConnection(
-            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database))},
+            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database)) },
             pageInfo: connection.pageInfo.graphql,
-            planets: connection.edges.map { $0.node.graphql(database: context.database)},
+            planets: connection.edges.map { $0.node.graphql(database: context.database) },
             totalCount: connection.total
         )
     }
@@ -36,9 +36,9 @@ extension StarWarsSchema.Film: StarWarsSchema.Film.Resolver {
             .connection(from: args)
 
         return StarWarsSchema.FilmSpeciesConnection(
-            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database))},
+            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database)) },
             pageInfo: connection.pageInfo.graphql,
-            species: connection.edges.map { $0.node.graphql(database: context.database)},
+            species: connection.edges.map { $0.node.graphql(database: context.database) },
             totalCount: connection.total
         )
     }
@@ -49,9 +49,9 @@ extension StarWarsSchema.Film: StarWarsSchema.Film.Resolver {
             .connection(from: args)
 
         return StarWarsSchema.FilmStarshipsConnection(
-            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database))},
+            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database)) },
             pageInfo: connection.pageInfo.graphql,
-            starships: connection.edges.map { $0.node.graphql(database: context.database)},
+            starships: connection.edges.map { $0.node.graphql(database: context.database) },
             totalCount: connection.total
         )
     }
@@ -62,7 +62,7 @@ extension StarWarsSchema.Film: StarWarsSchema.Film.Resolver {
             .connection(from: args)
 
         return StarWarsSchema.FilmVehiclesConnection(
-            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database))},
+            edges: connection.edges.map { .init(cursor: $0.cursor, node: $0.node.graphql(database: context.database)) },
             pageInfo: connection.pageInfo.graphql,
             totalCount: connection.total,
             vehicles: connection.edges.map { $0.node.graphql(database: context.database) }
