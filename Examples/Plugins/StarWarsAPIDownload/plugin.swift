@@ -26,8 +26,7 @@ struct StarWarsAPIDownloadPlugin: CommandPlugin {
             guard let url = URL(string: "\(swapi)/\(resource.rawValue)/?page=\(currentPage)") else {
                 throw StarWarsAPIDownloadPluginError(description: "Incorrect URL")
             }
-            let request = URLRequest(url: url, cachePolicy: .reloadIgnoringCacheData)
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let data = try Data(contentsOf: url)
             let page = try decoder.decode(Page<Content>.self, from: data)
             hasNext = page.next != nil
             currentPage += 1
@@ -50,10 +49,15 @@ struct StarWarsAPIDownloadPlugin: CommandPlugin {
 
         encoder.outputFormatting = .prettyPrinted
         let data = try encoder.encode(database)
-        try data.write(
-            to: URL(
-                filePath: context.package.directory.appending("Sources/StarWarsAPI/Database.json")
-                    .string))
+        guard let string = String(data: data, encoding: .utf8) else {
+            throw StarWarsAPIDownloadPluginError(description: "Could not convert to utf8")
+        }
+
+        do {
+            try string.write(toFile: context.package.directory.appending("Sources/StarWarsAPI/Database.json").string, atomically: true, encoding: .utf8)
+        } catch {
+            throw StarWarsAPIDownloadPluginError(description: "Could not write to \(context.package.directory.appending("Sources/StarWarsAPI/Database.json").string)")
+        }
     }
 }
 
