@@ -1,7 +1,7 @@
 import Foundation
 
 extension String {
-    var capitalizeFirst: String {
+    public var capitalizeFirst: String {
         prefix(1).uppercased() + dropFirst()
     }
 }

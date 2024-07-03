@@ -1,7 +1,7 @@
 import Foundation
 import GraphQL
 
-struct GeneratorData {
+struct SchemaGeneratorData {
     let schemaName: String
     let resolverName: String
     let objects: [ObjectTypeDefinition]
@@ -14,7 +14,7 @@ struct GeneratorData {
     let subscriptionFields: [FieldDefinition]
     let objectsWithFederationKeys: [(object: ObjectTypeDefinition, keys: [(name: String, fields: [String])])]
 
-    init(options: GeneratorOptions, schemas: [String]) throws {
+    init(options: SchemaGenerator.Options, schemas: [String]) throws {
         self.schemaName = options.namespace + "Schema"
         self.resolverName = options.namespace + "Resolver"
 
@@ -200,7 +200,7 @@ extension Directive {
     }
 }
 
-extension Generator {
+extension SchemaGenerator {
     func printThrowError(_ text: String) {
         println("throw \(data.schemaName)Error(description: \"\(text)\")")
     }

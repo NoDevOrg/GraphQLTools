@@ -1,7 +1,8 @@
+import CodeGenCommon
 import Foundation
 import GraphQL
 
-extension Generator {
+extension SchemaGenerator {
     public func generate() throws {
         printHeader()
         printImports()

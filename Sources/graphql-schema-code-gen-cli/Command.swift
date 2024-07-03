@@ -1,6 +1,6 @@
 import ArgumentParser
+import CodeGenerators
 import Foundation
-import GraphQLSchemaCodeGen
 
 @main
 struct Command: AsyncParsableCommand {
@@ -54,10 +54,10 @@ struct Command: AsyncParsableCommand {
         }
 
         let typeMapping = Dictionary(uniqueKeysWithValues: self.typeMapping)
-        let generator: Generator
+        let generator: SchemaGenerator
         do {
-            generator = try Generator(
-                options: GeneratorOptions(
+            generator = try SchemaGenerator(
+                options: SchemaGenerator.Options(
                     namespace: namespace,
                     additionalImports: additionalImports,
                     typeMapping: typeMapping

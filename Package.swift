@@ -16,16 +16,16 @@ package.dependencies = [
 
 package.targets = [
     .target(
-        name: "GraphQLSchemaCodeGen",
+        name: "CodeGenerators",
         dependencies: [
             .product(name: "GraphQL", package: "GraphQL"),
             .product(name: "SwiftProtobufPluginLibrary", package: "swift-protobuf"),
         ]
     ),
     .testTarget(
-        name: "GraphQLSchemaCodeGenTests",
+        name: "CodeGeneratorsTests",
         dependencies: [
-            .target(name: "GraphQLSchemaCodeGen"),
+            .target(name: "CodeGenerators"),
             .product(name: "CustomDump", package: "swift-custom-dump"),
         ],
         resources: [
@@ -35,7 +35,7 @@ package.targets = [
     .executableTarget(
         name: "graphql-schema-code-gen-cli",
         dependencies: [
-            .target(name: "GraphQLSchemaCodeGen"),
+            .target(name: "CodeGenerators"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]
     ),
@@ -48,7 +48,7 @@ package.targets = [
 ]
 
 package.products = [
-    .library(name: "GraphQLSchemaCodeGen", targets: ["GraphQLSchemaCodeGen"]),
+    .library(name: "CodeGenerators", targets: ["CodeGenerators"]),
     .executable(name: "graphql-schema-code-gen-cli", targets: ["graphql-schema-code-gen-cli"]),
     .plugin(name: "GraphQLSchemaCodeGenPlugin", targets: ["GraphQLSchemaCodeGenPlugin"]),
 ]
