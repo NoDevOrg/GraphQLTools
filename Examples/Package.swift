@@ -14,6 +14,19 @@ package.dependencies = [
 
 package.targets = [
     .executableTarget(
+        name: "ChatClient",
+        dependencies: [
+            .product(name: "Pioneer", package: "pioneer")
+        ],
+        resources: [
+            .copy("GraphQL"),
+            .copy("graphql-operation-codegen-config.json"),
+        ],
+        plugins: [
+            .plugin(name: "GraphQLOperationCodeGenPlugin", package: "GraphQLTools")
+        ]
+    ),
+    .executableTarget(
         name: "ChatService",
         dependencies: [
             .product(name: "Pioneer", package: "pioneer")
