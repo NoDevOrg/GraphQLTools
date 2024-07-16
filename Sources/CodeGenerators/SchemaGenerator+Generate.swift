@@ -1,4 +1,3 @@
-import CodeGenCommon
 import Foundation
 import GraphQL
 

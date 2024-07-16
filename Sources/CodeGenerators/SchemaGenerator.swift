@@ -3,11 +3,10 @@ import GraphQL
 import SwiftProtobufPluginLibrary
 
 public class SchemaGenerator: CodeGenerator {
-    let wellKnownTypes: [String: String]
     let schemas: [String]
     let options: Options
     let data: SchemaGeneratorData
-    public var printer: CodePrinter
+    var printer: CodePrinter
 
     /// Options passed in from the CLI
     public struct Options {
@@ -33,15 +32,12 @@ public class SchemaGenerator: CodeGenerator {
         options: Options = Options(),
         schemas: [String] = []
     ) throws {
-        self.wellKnownTypes = [
-            "Int": "Int",
-            "Float": "Float",
-            "String": "String",
-            "Boolean": "Bool",
-        ]
         self.schemas = schemas
         self.options = options
-        self.data = try SchemaGeneratorData(options: options, schemas: schemas)
+        self.data = try SchemaGeneratorData(
+            options: options,
+            schemas: schemas
+        )
         self.printer = CodePrinter()
     }
 

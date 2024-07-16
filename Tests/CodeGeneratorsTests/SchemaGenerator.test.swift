@@ -2,11 +2,11 @@ import CustomDump
 import GraphQL
 import XCTest
 
-@testable import GraphQLSchemaCodeGen
+@testable import CodeGenerators
 
-final class GeneratorTests: XCTestCase {
+final class SchemaGeneratorTests: XCTestCase {
     func testComment() throws {
-        let generator = try Generator()
+        let generator = try SchemaGenerator()
         generator.comment("Helpful comment")
 
         let expected =
@@ -19,7 +19,7 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testHeader() throws {
-        let generator = try Generator()
+        let generator = try SchemaGenerator()
         generator.printHeader()
 
         let expected =
@@ -37,7 +37,7 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testImportsDefault() throws {
-        let generator = try Generator()
+        let generator = try SchemaGenerator()
         generator.printImports()
 
         let expected =
@@ -53,8 +53,8 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testImportsCustomImports() throws {
-        let generator = try Generator(
-            options: GeneratorOptions(additionalImports: ["Pioneer", "Vapor"]))
+        let generator = try SchemaGenerator(
+            options: SchemaGenerator.Options(additionalImports: ["Pioneer", "Vapor"]))
         generator.printImports()
 
         let expected =
@@ -72,7 +72,7 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testNamespaceDefault() throws {
-        let generator = try Generator()
+        let generator = try SchemaGenerator()
         generator.printNamespace()
 
         let expected =
@@ -86,7 +86,7 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testNamespaceCustomNamespace() throws {
-        let generator = try Generator(options: GeneratorOptions(namespace: "Chat"))
+        let generator = try SchemaGenerator(options: SchemaGenerator.Options(namespace: "Chat"))
         generator.printNamespace()
 
         let expected =
@@ -100,7 +100,7 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testSDLDefault() throws {
-        let generator = try Generator()
+        let generator = try SchemaGenerator()
         generator.printSDL()
 
         let expected =
@@ -127,7 +127,7 @@ final class GeneratorTests: XCTestCase {
             type Schema2 {}
 
             """
-        let generator = try Generator(schemas: [schema1, schema2])
+        let generator = try SchemaGenerator(schemas: [schema1, schema2])
         generator.printSDL()
 
         let expected =
@@ -149,7 +149,7 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testTypeMappingDefault() throws {
-        let generator = try Generator()
+        let generator = try SchemaGenerator()
         generator.printTypeMapping()
 
         let expected =
@@ -160,8 +160,8 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testTypeMappingCustomMappings() throws {
-        let generator = try Generator(
-            options: GeneratorOptions(typeMapping: [
+        let generator = try SchemaGenerator(
+            options: SchemaGenerator.Options(typeMapping: [
                 "DateTime": "Foundation.Date", "LocalTime": "Foundation.String",
             ]))
         generator.printTypeMapping()
@@ -188,7 +188,7 @@ final class GeneratorTests: XCTestCase {
                 body: String!
             }
             """
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printObjectTypes()
 
         let expected =
@@ -216,7 +216,7 @@ final class GeneratorTests: XCTestCase {
                 viewedBy(userId: ID!): Bool
             }
             """
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printObjectTypes()
 
         let expected =
@@ -263,7 +263,7 @@ final class GeneratorTests: XCTestCase {
                 likedBy(userId: ID!): Bool
             }
             """
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printObjectTypes()
 
         let expected =
@@ -321,7 +321,7 @@ final class GeneratorTests: XCTestCase {
                 body: String!
             }
             """
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printObjectTypes()
 
         let expected =
@@ -353,7 +353,7 @@ final class GeneratorTests: XCTestCase {
                 body: String!
             }
             """
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printObjectTypes()
 
         let expected =
@@ -390,7 +390,7 @@ final class GeneratorTests: XCTestCase {
                 viewedBy(userId: ID!): Bool
             }
             """
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printObjectTypes()
 
         let expected =
@@ -444,7 +444,7 @@ final class GeneratorTests: XCTestCase {
             }
             """
 
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printObjectTypes()
 
         let expected =
@@ -476,7 +476,7 @@ final class GeneratorTests: XCTestCase {
                 viewedBy(userId: ID!): Boolean
             }
             """
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printObjectResolverDefaultImplementation()
 
         let expected =
@@ -510,7 +510,7 @@ final class GeneratorTests: XCTestCase {
               NORMAL
             }
             """
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printObjectTypes()
 
         let expected =
@@ -554,7 +554,7 @@ final class GeneratorTests: XCTestCase {
             }
             """
 
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printResolverArguments()
 
         let expected =
@@ -597,7 +597,7 @@ final class GeneratorTests: XCTestCase {
             }
             """
 
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printResolverProtocol()
 
         let expected =
@@ -640,7 +640,7 @@ final class GeneratorTests: XCTestCase {
             }
             """
 
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printResolverProtocol()
 
         let expected =
@@ -689,7 +689,7 @@ final class GeneratorTests: XCTestCase {
             }
             """
 
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printResolverProtocol()
 
         let expected =
@@ -735,7 +735,7 @@ final class GeneratorTests: XCTestCase {
             }
             """
 
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printResolverProtocolDefaultImplemention()
 
         let expected =
@@ -799,7 +799,7 @@ final class GeneratorTests: XCTestCase {
             }
             """
 
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printSchemaBuilder()
 
         let expected =
@@ -870,7 +870,7 @@ final class GeneratorTests: XCTestCase {
             }
             """
 
-        let generator = try Generator(schemas: [schema])
+        let generator = try SchemaGenerator(schemas: [schema])
         try generator.printSchemaBuilder()
 
         let expected =
@@ -908,8 +908,8 @@ final class GeneratorTests: XCTestCase {
         let expected = try Bundle.module.contents(
             forResource: "ChatSchema.swift", withExtension: "generated")
 
-        let generator = try Generator(
-            options: GeneratorOptions(
+        let generator = try SchemaGenerator(
+            options: SchemaGenerator.Options(
                 namespace: "Chat",
                 additionalImports: [
                     "Pioneer"
