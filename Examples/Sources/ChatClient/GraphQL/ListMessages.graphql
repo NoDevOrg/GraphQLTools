@@ -1,0 +1,7 @@
+query ListMessages($room: String!) {
+  listMessages(room: $room) {
+    id
+    body
+    received
+  }
+}

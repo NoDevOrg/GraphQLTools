@@ -1,0 +1,14 @@
+{
+    "invocations": [
+        {
+            "schemaFiles": [
+                "GraphQL/Chat.graphqls"
+            ],
+            "operationsPath": "GraphQL",
+            "typeMapping": {
+                "ID": "String",
+                "DateTime": "Foundation.Date"
+            }
+        }
+    ]
+}
