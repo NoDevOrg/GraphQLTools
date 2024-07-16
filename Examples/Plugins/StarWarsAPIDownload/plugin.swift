@@ -1,8 +1,9 @@
 import Foundation
+import PackagePlugin
+
 #if canImport(FoundationNetworking)
     import FoundationNetworking
 #endif
-import PackagePlugin
 
 @main
 struct StarWarsAPIDownloadPlugin: CommandPlugin {
@@ -56,7 +57,8 @@ struct StarWarsAPIDownloadPlugin: CommandPlugin {
         do {
             try string.write(toFile: context.package.directory.appending("Sources/StarWarsAPI/Database.json").string, atomically: true, encoding: .utf8)
         } catch {
-            throw StarWarsAPIDownloadPluginError(description: "Could not write to \(context.package.directory.appending("Sources/StarWarsAPI/Database.json").string)")
+            throw StarWarsAPIDownloadPluginError(
+                description: "Could not write to \(context.package.directory.appending("Sources/StarWarsAPI/Database.json").string)")
         }
     }
 }
