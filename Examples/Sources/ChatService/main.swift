@@ -4,6 +4,8 @@ import Vapor
 
 let application = try Application(.detect())
 
+application.http.server.configuration.port = 9001
+
 // Custom encoding/decoding strategies. Provided by Graphiti
 let coders = Coders()
 coders.encoder.dateEncodingStrategy = .iso8601
