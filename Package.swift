@@ -33,12 +33,25 @@ package.targets = [
         ]
     ),
     .executableTarget(
+        name: "graphql-operation-code-gen-cli",
+        dependencies: [
+            .target(name: "CodeGenerators"),
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        ]
+    ),
+    .executableTarget(
         name: "graphql-schema-code-gen-cli",
         dependencies: [
             .target(name: "CodeGenerators"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]
     ),
+    .plugin(
+        name: "GraphQLOperationCodeGenPlugin",
+        capability: .buildTool(),
+        dependencies: [
+            .target(name: "graphql-operation-code-gen-cli")
+        ]),
     .plugin(
         name: "GraphQLSchemaCodeGenPlugin",
         capability: .buildTool(),
@@ -49,6 +62,8 @@ package.targets = [
 
 package.products = [
     .library(name: "CodeGenerators", targets: ["CodeGenerators"]),
+    .executable(name: "graphql-operation-code-gen-cli", targets: ["graphql-operation-code-gen-cli"]),
     .executable(name: "graphql-schema-code-gen-cli", targets: ["graphql-schema-code-gen-cli"]),
+    .plugin(name: "GraphQLOperationCodeGenPlugin", targets: ["GraphQLOperationCodeGenPlugin"]),
     .plugin(name: "GraphQLSchemaCodeGenPlugin", targets: ["GraphQLSchemaCodeGenPlugin"]),
 ]
