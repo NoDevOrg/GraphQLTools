@@ -38,20 +38,20 @@ extension OperationsGenerator {
         mark("Support")
         println(
             """
-            protocol GraphQLOperation: Codable {
+            \(options.visibility) protocol GraphQLOperation: Codable {
                 associatedtype Result: Codable
 
                 static var name: String { get }
                 static var document: String { get }
             }
 
-            struct GraphQLRequest<Variables: Codable>: Codable {
-                let operationName: String
-                let query: String
-                let variables: Variables
+            \(options.visibility) struct GraphQLRequest<Variables: Codable>: Codable {
+                \(options.visibility) let operationName: String
+                \(options.visibility) let query: String
+                \(options.visibility) let variables: Variables
             }
 
-            func encode<Operation: GraphQLOperation>(operation: Operation, encoder: JSONEncoder) throws -> Data {
+            \(options.visibility) func encode<Operation: GraphQLOperation>(operation: Operation, encoder: JSONEncoder) throws -> Data {
                 try encoder.encode(
                     GraphQLRequest(
                         operationName: Operation.name,
@@ -60,12 +60,12 @@ extension OperationsGenerator {
                 ))
             }
 
-            struct GraphQLResponse<Operation: GraphQLOperation>: Codable {
-                let data: Operation.Result?
-                let errors: [GraphQLError]?
+            \(options.visibility) struct GraphQLResponse<Operation: GraphQLOperation>: Codable {
+                \(options.visibility) let data: Operation.Result?
+                \(options.visibility) let errors: [GraphQLError]?
             }
 
-            func decode<Operation: GraphQLOperation>(operation: Operation, data: Data, decoder: JSONDecoder) throws -> GraphQLResponse<Operation> {
+            \(options.visibility) func decode<Operation: GraphQLOperation>(operation: Operation, data: Data, decoder: JSONDecoder) throws -> GraphQLResponse<Operation> {
                 return try decoder.decode(GraphQLResponse<Operation>.self, from: data)
             }
             """
@@ -74,7 +74,7 @@ extension OperationsGenerator {
 
     func printNamespace() {
         println()
-        println("enum \(data.namespace) {}")
+        println("\(options.visibility) enum \(data.namespace) {}")
     }
 
     func printTypeMapping() {
@@ -83,7 +83,7 @@ extension OperationsGenerator {
         mark("Type Mapping")
         scoped("extension \(data.namespace)", scope: .curly) {
             for (key, value) in options.typeMapping.sorted(by: { $0.key < $1.key }) {
-                println("typealias \(key) = \(value)")
+                println("\(options.visibility) typealias \(key) = \(value)")
             }
         }
     }
@@ -96,18 +96,18 @@ extension OperationsGenerator {
                 guard let name = operation.name?.value else {
                     throw GeneratorError(description: "All operations must have a name. A \(operation.operation.display) is missing a name.")
                 }
-                try scoped("struct \(name)\(operation.operation.display): GraphQLOperation", scope: .curly) {
-                    println("typealias Result = Data")
+                try scoped("\(options.visibility) struct \(name)\(operation.operation.display): GraphQLOperation", scope: .curly) {
+                    println("\(options.visibility) typealias Result = Data")
                     println()
-                    println("static var name: String = \"\(name)\"")
+                    println("\(options.visibility) static var name: String = \"\(name)\"")
                     println()
-                    println("static let document: String = \"\"\"")
+                    println("\(options.visibility) static let document: String = \"\"\"")
                     println(file)
                     println("\"\"\"")
                     println()
 
                     for variableDefinition in operation.variableDefinitions {
-                        println("let \(variableDefinition.variable.name.value): \(try swiftTypeName(variableDefinition.type))")
+                        println("\(options.visibility) let \(variableDefinition.variable.name.value): \(try swiftTypeName(variableDefinition.type))")
                     }
 
                     if !operation.variableDefinitions.isEmpty {
@@ -129,7 +129,7 @@ extension OperationsGenerator {
     }
 
     private func printType(name: String, selectionSet: SelectionSet, definitions: [FieldDefinition]) throws {
-        try scoped("struct \(name): Codable", scope: .curly) {
+        try scoped("\(options.visibility) struct \(name): Codable", scope: .curly) {
             var additionalTypesToGenerate: [String: SelectionSet] = [:]
             for selection in selectionSet.selections {
                 guard let field = selection as? Field else {
@@ -145,7 +145,7 @@ extension OperationsGenerator {
                     additionalTypesToGenerate[underlyingName] = field.selectionSet
                 }
 
-                println("let \(field.name.value): \(try swiftTypeName(type.type))")
+                println("\(options.visibility) let \(field.name.value): \(try swiftTypeName(type.type))")
             }
 
             if !additionalTypesToGenerate.isEmpty {
