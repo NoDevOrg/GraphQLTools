@@ -22,6 +22,9 @@ struct Command: AsyncParsableCommand {
     )
     var typeMapping: [(String, String)] = []
 
+    @Option(help: "Visibility for generated code, defaults to package")
+    var visibility: String = "package"
+
     @Option(
         help:
             "Path to GraphQL schema file. Multiple files can be used but they will be treated as a single schema.",
@@ -76,7 +79,8 @@ struct Command: AsyncParsableCommand {
             generator = try OperationsGenerator(
                 options: OperationsGenerator.Options(
                     namespace: namespace,
-                    typeMapping: typeMapping
+                    typeMapping: typeMapping,
+                    visibility: visibility
                 ),
                 schemas: schemas,
                 operations: operations

@@ -10,6 +10,8 @@ struct GraphQLOperationCodeGenPlugin {
         case invalidSchemaFileExtension(String)
         /// Indicates that the file extension of an input file was not `.graphql`.
         case invalidOperationFileExtension(String)
+        /// Indicated that an invalid file visibility was provided
+        case invalidVisibility(String)
         /// Indicates that there was no configuration file at the required location.
         case noConfigFound(String)
 
@@ -21,6 +23,8 @@ struct GraphQLOperationCodeGenPlugin {
                 return "The input file '\(path)' does not have a '.graphqls' extension."
             case let .invalidOperationFileExtension(path):
                 return "The input file '\(path)' does not have a '.graphql' extension."
+            case let .invalidVisibility(visibility):
+                return "Invalid visibility provided: \(visibility)"
             case let .noConfigFound(path):
                 return """
                     No configuration file found named '\(path)'. The file must not be listed in the \
@@ -45,6 +49,9 @@ struct GraphQLOperationCodeGenPlugin {
             
             /// A path to where all operations are located for this invocation.
             var operationsPath: String
+
+            /// Visibility for generated code
+            var visibility: String?
         }
 
         /// A list of invocations of `GraphQLSchemaCodeGenPlugin` with the `GraphQLSchemaCodeGenCLI`.
@@ -101,6 +108,10 @@ struct GraphQLOperationCodeGenPlugin {
             }
         }
 
+        if let visibility = invocation.visibility {
+            args.append("--visibility=\(visibility)")
+        }
+
         for schemaFile in invocation.schemaFiles {
             let schemaFilePath = inputDirectory.appending(schemaFile)
             args.append("--schema-path=\(schemaFilePath.description)")
@@ -128,6 +139,11 @@ struct GraphQLOperationCodeGenPlugin {
     /// Validates the configuration file for various user errors.
     private func validateConfiguration(_ configuration: Configuration) throws {
         for invocation in configuration.invocations {
+            if let visibility = invocation.visibility {
+                if !["public", "package", "internal"].contains(visibility) {
+                    throw PluginError.invalidVisibility(visibility)
+                }
+            }
             for schemaFile in invocation.schemaFiles {
                 if !schemaFile.hasSuffix(".graphqls") {
                     throw PluginError.invalidSchemaFileExtension(schemaFile)

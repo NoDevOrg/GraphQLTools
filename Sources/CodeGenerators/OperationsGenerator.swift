@@ -12,13 +12,16 @@ public class OperationsGenerator: CodeGenerator {
     public struct Options {
         let namespace: String
         let typeMapping: [String: String]
+        let visibility: String
 
         public init(
             namespace: String = "Generated",
-            typeMapping: [String: String] = [:]
+            typeMapping: [String: String] = [:],
+            visibility: String = "package"
         ) {
             self.namespace = namespace
             self.typeMapping = typeMapping
+            self.visibility = visibility
         }
     }
 
