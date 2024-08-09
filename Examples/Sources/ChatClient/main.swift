@@ -12,14 +12,8 @@ decoder.dateDecodingStrategy = .iso8601
 
 application.get("messages") { request in
     let query = Generated.ListMessagesQuery(room: "nodev")
-
     let response = try await request.client.graphql(url: "http://localhost:9001/graphql", operation: query, encoder: encoder, decoder: decoder)
-
-    guard let result = response.data else {
-        throw Abort(.internalServerError, reason: "\(response.errors)")
-    }
-
-    return result
+    return response
 }
 
 extension Generated.ListMessagesQuery.Result: Content {}
