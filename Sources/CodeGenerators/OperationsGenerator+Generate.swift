@@ -38,35 +38,30 @@ extension OperationsGenerator {
         mark("Support")
         println(
             """
+            \(options.visibility) struct GraphQLOperationError: Error {
+                let description: String
+            }
+            
             \(options.visibility) protocol GraphQLOperation: Codable {
                 associatedtype Result: Codable
 
                 static var name: String { get }
                 static var document: String { get }
             }
-
-            \(options.visibility) struct GraphQLRequest<Variables: Codable>: Codable {
-                \(options.visibility) let operationName: String
-                \(options.visibility) let query: String
-                \(options.visibility) let variables: Variables
-            }
-
-            \(options.visibility) func encode<Operation: GraphQLOperation>(operation: Operation, encoder: JSONEncoder) throws -> Data {
-                try encoder.encode(
+            
+            extension GraphQLOperation {
+                \(options.visibility) func request(encoder: JSONEncoder = JSONEncoder(), decoder: JSONDecoder = JSONDecoder()) throws -> GraphQLRequest {
                     GraphQLRequest(
-                        operationName: Operation.name,
-                        query: Operation.document,
-                        variables: operation
-                ))
-            }
+                        query: Self.document,
+                        operationName: Self.name,
+                        variables: try decoder.decode([String: Map].self, from: encoder.encode(self))
+                    )
+                }
 
-            \(options.visibility) struct GraphQLResponse<Operation: GraphQLOperation>: Codable {
-                \(options.visibility) let data: Operation.Result?
-                \(options.visibility) let errors: [GraphQLError]?
-            }
-
-            \(options.visibility) func decode<Operation: GraphQLOperation>(operation: Operation, data: Data, decoder: JSONDecoder) throws -> GraphQLResponse<Operation> {
-                return try decoder.decode(GraphQLResponse<Operation>.self, from: data)
+                \(options.visibility) static func data(from result: GraphQLResult, encoder: JSONEncoder = JSONEncoder(), decoder: JSONDecoder = JSONDecoder()) throws -> Result {
+                    guard let data = result.data else { throw GraphQLOperationError(description: "GraphQL operation \\(Self.name) result missing data") }
+                    return try decoder.decode(Result.self, from: encoder.encode(data)) 
+                }
             }
             """
         )
