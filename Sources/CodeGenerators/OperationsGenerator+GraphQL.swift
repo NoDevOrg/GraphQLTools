@@ -8,6 +8,8 @@ struct OperationsGeneratorData {
     let queryFields: [FieldDefinition]
     let mutationFields: [FieldDefinition]
     let subscriptionFields: [FieldDefinition]
+    let enumsNeeded: [EnumTypeDefinition]
+    let inputsNeeded: [InputObjectTypeDefinition]
 
     init(options: OperationsGenerator.Options, schemas: [String], operations: [String]) throws {
         self.namespace = options.namespace
@@ -84,5 +86,46 @@ struct OperationsGeneratorData {
         self.subscriptionFields = schemaDefinitions.objects(named: subscriptionObjectName).flatMap {
             $0.fields
         }
+
+        let allInputs = schemaDefinitions.compactMap { $0 as? InputObjectTypeDefinition }
+        let allEnums = schemaDefinitions.compactMap { $0 as? EnumTypeDefinition }
+        
+        var inputsNeeded = Set<String>()
+        var enumsNeeded = Set<String>()
+
+        for (operation, file) in operationDefinitionAndFile {
+            for variableDefinition in operation.variableDefinitions {
+                let underlyingName = try underlyingTypeName(variableDefinition.type)
+                guard !wellKnownTypes.keys.contains(underlyingName) else { continue }
+                guard let input = allInputs.first(where: { $0.name.value == underlyingName }) else { continue }
+                inputsNeeded.insert(input.name.value)
+            }
+        }
+        
+        var inputsToCheck = inputsNeeded
+        while !inputsToCheck.isEmpty {
+            let name = inputsToCheck.removeFirst()
+            guard let input = allInputs.first(where: { $0.name.value == name }) else { continue }
+            for field in input.fields {
+                let underlyingName = try underlyingTypeName(field.type)
+                guard !wellKnownTypes.keys.contains(underlyingName) else { continue }
+                if let next = allInputs.first(where: { $0.name.value == underlyingName }) {
+                    let (inserted, _) = inputsNeeded.insert(underlyingName)
+                    if inserted {
+                        inputsToCheck.insert(underlyingName)
+                    }
+                }
+                if let next = allEnums.first(where: { $0.name.value == underlyingName }) {
+                    enumsNeeded.insert(underlyingName)
+                }
+            }
+        }
+
+        self.enumsNeeded = enumsNeeded
+            .compactMap { name in allEnums.first(where: { $0.name.value == name }) }
+            .sorted(by: { $0.name.value < $1.name.value })
+        self.inputsNeeded = inputsNeeded
+            .compactMap { name in allInputs.first(where: { $0.name.value == name }) }
+            .sorted(by: { $0.name.value < $1.name.value })
     }
 }

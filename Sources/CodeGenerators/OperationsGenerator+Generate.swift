@@ -8,6 +8,8 @@ extension OperationsGenerator {
         printLibrary()
         printNamespace()
         printTypeMapping()
+        try printEnums()
+        try printInputs()
         try printOperations()
     }
 
@@ -79,6 +81,34 @@ extension OperationsGenerator {
         scoped("extension \(data.namespace)", scope: .curly) {
             for (key, value) in options.typeMapping.sorted(by: { $0.key < $1.key }) {
                 println("\(options.visibility) typealias \(key) = \(value)")
+            }
+        }
+    }
+
+    func printEnums() throws {
+        println()
+        mark("Enums")
+        try scoped("extension \(data.namespace)", scope: .curly) {
+            try looped(data.enumsNeeded) { object in
+                try scoped("\(options.visibility) enum \(object.name.value): String, Codable", scope: .curly) {
+                    for value in object.values {
+                        println("case \(value.name.value)")
+                    }
+                }
+            }
+        }
+    }
+
+    func printInputs() throws {
+        println()
+        mark("Inputs")
+        try scoped("extension \(data.namespace)", scope: .curly) {
+            try looped(data.inputsNeeded) { object in
+                try scoped("\(options.visibility) struct \(object.name.value): Codable", scope: .curly) {
+                    for field in object.fields {
+                        println("\(options.visibility) let \(field.name.value): \(try swiftTypeName(field.type))")
+                    }
+                }
             }
         }
     }
