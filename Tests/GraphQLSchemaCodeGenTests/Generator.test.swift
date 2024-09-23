@@ -605,7 +605,7 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Resolver Protocol
             extension GeneratedSchema {
-              protocol GeneratedResolver {
+              protocol GeneratedResolver: Sendable {
                 associatedtype ContextType
 
                 func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
@@ -648,7 +648,7 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Resolver Protocol
             extension GeneratedSchema {
-              protocol GeneratedResolver {
+              protocol GeneratedResolver: Sendable {
                 associatedtype ContextType
 
                 func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
@@ -697,7 +697,7 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Resolver Protocol
             extension GeneratedSchema {
-              protocol GeneratedResolver {
+              protocol GeneratedResolver: Sendable {
                 associatedtype ContextType
 
                 func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
