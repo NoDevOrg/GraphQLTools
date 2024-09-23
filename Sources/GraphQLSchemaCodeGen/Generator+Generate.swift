@@ -236,7 +236,7 @@ extension Generator {
         println()
         mark("Resolver Protocol")
         try scoped("extension \(data.schemaName)", scope: .curly) {
-            try scoped("protocol \(data.resolverName)", scope: .curly) {
+            try scoped("protocol \(data.resolverName): Sendable", scope: .curly) {
                 println("associatedtype ContextType")
                 println()
                 for field in (data.queryFields + data.mutationFields) {

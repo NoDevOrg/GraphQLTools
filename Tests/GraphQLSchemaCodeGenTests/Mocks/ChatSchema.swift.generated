@@ -83,7 +83,7 @@ extension ChatSchema {
 
 // MARK: - Resolver Protocol
 extension ChatSchema {
-  protocol ChatResolver {
+  protocol ChatResolver: Sendable {
     associatedtype ContextType
 
     func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
