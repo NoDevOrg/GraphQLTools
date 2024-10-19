@@ -29,7 +29,18 @@ extension ChatSchema {
       id: ID!
       body: String!
       recieved: DateTime!
+      sender: Sender!
   }
+
+  type System {
+      id: ID!
+  }
+
+  type User {
+      id: ID!
+  }
+
+  union Sender = System | User
 
   type Query {
       history(room: String!): [Message!]!
@@ -54,29 +65,63 @@ extension ChatSchema {
 
 // MARK: - Types
 extension ChatSchema {
-  struct Message: Codable {
+  struct Message: Codable, Sendable {
     let id: ID
     let body: String
     let recieved: DateTime
+    let sender: Sender
 
-    struct Key: Codable {
+    var sender_resolver: SenderUnion {
+      switch sender {
+      case .system(let object): return object
+      case .user(let object): return object
+      }
+    }
+
+    struct Key: Codable, Sendable {
       let id: ID
+    }
+  }
+
+  struct System: SenderUnion, Codable, Sendable {
+    let id: ID
+  }
+
+  struct User: SenderUnion, Codable, Sendable {
+    let id: ID
+  }
+
+  protocol SenderUnion: Codable, Sendable {}
+
+  enum Sender: Codable, Sendable {
+    case system(System)
+    case user(User)
+
+    func encode(to encoder: any Encoder) throws {
+      switch self {
+      case .system(let object): try object.encode(to: encoder)
+      case .user(let object): try object.encode(to: encoder)
+      }
+    }
+
+    init(from decoder: any Decoder) throws {
+      throw ChatSchemaError(description: "Unable to decode Sender because Unions are not supported as inputs.")
     }
   }
 }
 
 // MARK: - Resolver Arguments
 extension ChatSchema {
-  struct HistoryArguments: Codable {
+  struct HistoryArguments: Codable, Sendable {
     let room: String
   }
 
-  struct SendMessageArguments: Codable {
+  struct SendMessageArguments: Codable, Sendable {
     let room: String
     let message: String
   }
 
-  struct MessagesArguments: Codable {
+  struct MessagesArguments: Codable, Sendable {
     let room: String
   }
 }
@@ -126,10 +171,21 @@ extension ChatSchema {
           Field("id", at: \.id)
           Field("body", at: \.body)
           Field("recieved", at: \.recieved)
+          Field("sender", at: \.sender_resolver, as: Sender.self)
         }
         .key(at: Resolver.message) {
           Argument("id", at: \.id)
         }
+        Type(System.self, as: "System") {
+          Field("id", at: \.id)
+        }
+        Type(User.self, as: "User") {
+          Field("id", at: \.id)
+        }
+        Union(Sender.self, members: [
+          System.self,
+          User.self,
+        ])
       }
       .addQuery {
         Field("history", at: Resolver.history) {

@@ -9,6 +9,7 @@ struct GeneratorData {
     let enums: [EnumTypeDefinition]
     let scalars: [ScalarTypeDefinition]
     let interfaces: [InterfaceTypeDefinition]
+    let unions: [UnionTypeDefinition]
     let queryFields: [FieldDefinition]
     let mutationFields: [FieldDefinition]
     let subscriptionFields: [FieldDefinition]
@@ -78,6 +79,7 @@ struct GeneratorData {
         self.enums = definitions.enums
         self.scalars = definitions.scalars
         self.interfaces = definitions.interfaces
+        self.unions = definitions.unions
 
         self.queryFields = definitions.objects(named: queryObjectName).flatMap { $0.fields }
         self.mutationFields = definitions.objects(named: mutationObjectName).flatMap { $0.fields }
@@ -151,6 +153,16 @@ extension [any Definition] {
         }
     }
 
+    var unions: [UnionTypeDefinition] {
+        self.compactMap {
+            if let union = $0 as? UnionTypeDefinition { return union }
+            if let unionExtension = $0 as? UnionExtensionDefinition {
+                return unionExtension.definition
+            }
+            return nil
+        }
+    }
+
     func objects(named: String) -> [ObjectTypeDefinition] {
         objects.filter { $0.name.value == named }
     }
@@ -174,6 +186,12 @@ extension ObjectTypeDefinition {
                 try ("Key\($0.offset)", $0.element.federationKeyFields())
             }
         }
+    }
+}
+
+extension UnionTypeDefinition {
+    func contains(member: String) -> Bool {
+        types.map { $0.name.value }.contains(member)
     }
 }
 

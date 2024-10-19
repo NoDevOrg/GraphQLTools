@@ -196,7 +196,7 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Types
             extension GeneratedSchema {
-              struct Message: Codable {
+              struct Message: Codable, Sendable {
                 let id: ID
                 let body: String
               }
@@ -224,11 +224,11 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Types
             extension GeneratedSchema {
-              struct Message: Codable {
+              struct Message: Codable, Sendable {
                 let id: ID
                 let body: String
 
-                struct ViewedByArguments: Codable {
+                struct ViewedByArguments: Codable, Sendable {
                   let userId: ID
                 }
 
@@ -271,11 +271,11 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Types
             extension GeneratedSchema {
-              struct Message: Codable {
+              struct Message: Codable, Sendable {
                 let id: ID
                 let body: String
 
-                struct ViewedByArguments: Codable {
+                struct ViewedByArguments: Codable, Sendable {
                   let userId: ID
                 }
 
@@ -287,7 +287,7 @@ final class GeneratorTests: XCTestCase {
                   return try await resolver.viewedBy(context: context, args: args)
                 }
 
-                struct LikedByArguments: Codable {
+                struct LikedByArguments: Codable, Sendable {
                   let userId: ID
                 }
 
@@ -329,11 +329,11 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Types
             extension GeneratedSchema {
-              struct Message: Codable {
+              struct Message: Codable, Sendable {
                 let id: ID
                 let body: String
 
-                struct Key: Codable {
+                struct Key: Codable, Sendable {
                   let id: ID
                 }
               }
@@ -361,16 +361,16 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Types
             extension GeneratedSchema {
-              struct Message: Codable {
+              struct Message: Codable, Sendable {
                 let id: ID
                 let hash: String
                 let body: String
 
-                struct Key0: Codable {
+                struct Key0: Codable, Sendable {
                   let id: ID
                 }
 
-                struct Key1: Codable {
+                struct Key1: Codable, Sendable {
                   let hash: String
                 }
               }
@@ -398,11 +398,11 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Types
             extension GeneratedSchema {
-              struct Message: Codable {
+              struct Message: Codable, Sendable {
                 let id: ID
                 let body: String
 
-                struct ViewedByArguments: Codable {
+                struct ViewedByArguments: Codable, Sendable {
                   let userId: ID
                 }
 
@@ -420,7 +420,7 @@ final class GeneratorTests: XCTestCase {
                   func viewedBy(context: ContextType, args: ViewedByArguments) async throws -> Bool?
                 }
 
-                struct Key: Codable {
+                struct Key: Codable, Sendable {
                   let id: ID
                 }
               }
@@ -452,7 +452,7 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Types
             extension GeneratedSchema {
-              struct Starship: Node, Codable {
+              struct Starship: Node, Codable, Sendable {
                 let id: ID
                 let name: String
               }
@@ -518,16 +518,16 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Types
             extension GeneratedSchema {
-              struct Message: Codable {
+              struct Message: Codable, Sendable {
                 let id: ID
                 let body: String
               }
 
-              struct SendMessageInput: Codable {
+              struct SendMessageInput: Codable, Sendable {
                 let body: String
               }
 
-              enum MessageType: String, Codable {
+              enum MessageType: String, Codable, Sendable {
                 case urgent = "URGENT"
                 case normal = "NORMAL"
               }
@@ -562,16 +562,16 @@ final class GeneratorTests: XCTestCase {
 
             // MARK: - Resolver Arguments
             extension GeneratedSchema {
-              struct HistoryArguments: Codable {
+              struct HistoryArguments: Codable, Sendable {
                 let room: String
               }
 
-              struct SendMessageArguments: Codable {
+              struct SendMessageArguments: Codable, Sendable {
                 let room: String
                 let message: String
               }
 
-              struct MessagesArguments: Codable {
+              struct MessagesArguments: Codable, Sendable {
                 let room: String
               }
             }

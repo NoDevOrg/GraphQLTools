@@ -86,17 +86,19 @@ extension Generator {
 
     func printObjectTypes() throws {
         guard !data.objects.isEmpty || !data.inputs.isEmpty else { return }
+        let unionNames = data.unions.map { $0.name.value }
         println()
         mark("Types")
         try scoped("extension \(data.schemaName)", scope: .curly) {
             try looped(data.objects) { object in
-                let objectInterfaces = object.interfaces.map { $0.name.value } + ["Codable"]
+                let objectInterfaces = data.unions.filter({ $0.contains(member: object.name.value)}).map({ $0.name.value + "Union" }) + object.interfaces.map { $0.name.value } + ["Codable", "Sendable"]
                 try scoped(
                     "struct \(object.name.value): \(objectInterfaces.joined(separator: ", "))",
                     scope: .curly
                 ) {
                     let basicFields = object.fields.filter { $0.arguments.isEmpty }
                     let computedFields = object.fields.filter { !$0.arguments.isEmpty }
+                    let unionFields = try object.fields.map { try swiftTypeName($0.type) }.filter { unionNames.contains($0) }
 
                     for field in basicFields {
                         try println("let \(field.name.value): \(swiftTypeName(field.type))")
@@ -107,7 +109,7 @@ extension Generator {
 
                         try looped(computedFields) { field in
                             try scoped(
-                                "struct \(field.name.value.capitalizeFirst)Arguments: Codable",
+                                "struct \(field.name.value.capitalizeFirst)Arguments: Codable, Sendable",
                                 scope: .curly
                             ) {
                                 for argument in field.arguments {
@@ -148,9 +150,21 @@ extension Generator {
                         }
                     }
 
+                    if !unionFields.isEmpty { println() }
+                    try looped(unionFields) { field in
+                        guard let union = data.unions.filter({ $0.name.value == field }).first else { throw GeneratorError(description: "Unable to find union named \(field)") }
+                        scoped("var \(field.lowercased())_resolver: \(field)Union", scope: .curly) {
+                            println("switch \(field.lowercased()) {")
+                            for member in union.types {
+                                println("case .\(member.name.value.lowercased())(let object): return object")
+                            }
+                            println("}")
+                        }
+                    }
+
                     if try !object.federationKeys().isEmpty { println() }
                     try looped(object.federationKeys()) { key in
-                        try scoped("struct \(key.name): Codable", scope: .curly) {
+                        try scoped("struct \(key.name): Codable, Sendable", scope: .curly) {
                             for field in key.fields {
                                 let objectField = try object.field(named: field)
                                 try println(
@@ -164,7 +178,7 @@ extension Generator {
             if !data.inputs.isEmpty {
                 println()
                 try looped(data.inputs) { object in
-                    try scoped("struct \(object.name.value): Codable", scope: .curly) {
+                    try scoped("struct \(object.name.value): Codable, Sendable", scope: .curly) {
                         for field in object.fields {
                             try println("let \(field.name.value): \(swiftTypeName(field.type))")
                         }
@@ -174,7 +188,7 @@ extension Generator {
             if !data.enums.isEmpty {
                 println()
                 looped(data.enums) { object in
-                    scoped("enum \(object.name.value): String, Codable", scope: .curly) {
+                    scoped("enum \(object.name.value): String, Codable, Sendable", scope: .curly) {
                         for value in object.values {
                             println(
                                 "case \(value.name.value.lowercased()) = \"\(value.name.value)\"")
@@ -189,6 +203,33 @@ extension Generator {
                         for field in interface.fields {
                             try println(
                                 "var \(field.name.value): \(swiftTypeName(field.type)) { get }")
+                        }
+                    }
+                }
+            }
+
+            if !data.unions.isEmpty {
+                println()
+                looped(data.unions) { union in
+                    println("protocol \(union.name.value)Union: Codable, Sendable {}")
+                    println()
+                    scoped("enum \(union.name.value): Codable, Sendable", scope: .curly) {
+                        for member in union.types {
+                            println("case \(member.name.value.lowercased())(\(member.name.value))")
+                        }
+
+                        println()
+                        scoped("func encode(to encoder: any Encoder) throws", scope: .curly) {
+                            println("switch self {")
+                            for member in union.types {
+                                println("case .\(member.name.value.lowercased())(let object): try object.encode(to: encoder)")
+                            }
+                            println("}")
+                        }
+
+                        println()
+                        scoped("init(from decoder: any Decoder) throws", scope: .curly) {
+                            printThrowError("Unable to decode \(union.name.value) because Unions are not supported as inputs.")
                         }
                     }
                 }
@@ -222,7 +263,7 @@ extension Generator {
         try scoped("extension \(data.schemaName)", scope: .curly) {
             try looped(data.queryFields + data.mutationFields + data.subscriptionFields) { field in
                 try scoped(
-                    "struct \(field.name.value.capitalizeFirst)Arguments: Codable", scope: .curly
+                    "struct \(field.name.value.capitalizeFirst)Arguments: Codable, Sendable", scope: .curly
                 ) {
                     for argument in field.arguments {
                         try println("let \(argument.name.value): \(swiftTypeName(argument.type))")
@@ -357,9 +398,11 @@ extension Generator {
                         "Type(\(object.name.value).self, as: \"\(object.name.value)\", interfaces: [\(objectInterfaces.joined(separator: ", "))])"
                 }
 
-                scoped(typeDeclaration, scope: .curly) {
+                try scoped(typeDeclaration, scope: .curly) {
                     for field in object.fields {
-                        if field.arguments.isEmpty {
+                        if data.unions.map({ $0.name.value }).contains(try swiftTypeName(field.type)) {
+                            println("Field(\"\(field.name.value)\", at: \\.\(field.name.value)_resolver, as: \(try swiftTypeName(field.type)).self)")
+                        } else if field.arguments.isEmpty {
                             println("Field(\"\(field.name.value)\", at: \\.\(field.name.value))")
                         } else {
                             scoped(
@@ -405,6 +448,15 @@ extension Generator {
                         println("Field(\"\(field.name.value)\", at: \\.\(field.name.value))")
                     }
                 }
+            }
+            for union in data.unions {
+                println("Union(\(union.name.value).self, members: [")
+                withIndentation {
+                    for member in union.types {
+                        println("\(member.name.value).self,")
+                    }
+                }
+                println("])")
             }
         }
     }

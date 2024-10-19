@@ -6,7 +6,18 @@ type Message @key(fields: "id") {
     id: ID!
     body: String!
     recieved: DateTime!
+    sender: Sender!
 }
+
+type System {
+    id: ID!
+}
+
+type User {
+    id: ID!
+}
+
+union Sender = System | User
 
 type Query {
     history(room: String!): [Message!]!
