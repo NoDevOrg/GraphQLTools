@@ -1,17 +1,18 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.1
 import PackageDescription
 
 let package = Package(name: "GraphQLTools")
 
 package.platforms = [
-    .macOS(.v13)
+    .macOS(.v14)
 ]
 
 package.dependencies = [
-    .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
-    .package(url: "https://github.com/apple/swift-protobuf", from: "1.0.0"),
-    .package(url: "https://github.com/GraphQLSwift/GraphQL", from: "2.0.0"),
-    .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "1.0.0"),
+    .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
+    .package(url: "https://github.com/apple/swift-protobuf", from: "1.26.0"),
+    .package(url: "https://github.com/GraphQLSwift/GraphQL", from: "2.9.0"),
+    .package(url: "https://github.com/apple/swift-nio.git", from: "2.62.0"),
+    .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "1.3.0"),
 ]
 
 package.targets = [
@@ -19,6 +20,7 @@ package.targets = [
         name: "GraphQLSchemaCodeGen",
         dependencies: [
             .product(name: "GraphQL", package: "GraphQL"),
+            .product(name: "NIO", package: "swift-nio"),
             .product(name: "SwiftProtobufPluginLibrary", package: "swift-protobuf"),
         ]
     ),
