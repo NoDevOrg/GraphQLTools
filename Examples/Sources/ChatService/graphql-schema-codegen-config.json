@@ -5,6 +5,12 @@
             "additionalImports": [
                 "Pioneer"
             ],
+            "computedFields": {
+                "Message": [
+                    "hash",
+                    "likes"
+                ]
+            },
             "typeMapping": {
                 "DateTime": "Foundation.Date"
             },
