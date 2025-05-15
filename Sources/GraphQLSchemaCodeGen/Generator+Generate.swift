@@ -95,8 +95,8 @@ extension Generator {
                     "struct \(object.name.value): \(objectInterfaces.joined(separator: ", "))",
                     scope: .curly
                 ) {
-                    let basicFields = object.fields.filter { $0.arguments.isEmpty }
-                    let computedFields = object.fields.filter { !$0.arguments.isEmpty }
+                    let basicFields = object.basicFields(options: options)
+                    let computedFields = object.computedFields(options: options)
 
                     for field in basicFields {
                         try println("let \(field.name.value): \(swiftTypeName(field.type))")
@@ -106,19 +106,22 @@ extension Generator {
                         println()
 
                         try looped(computedFields) { field in
-                            try scoped(
-                                "struct \(field.name.value.capitalizeFirst)Arguments: Codable",
-                                scope: .curly
-                            ) {
-                                for argument in field.arguments {
-                                    try println(
-                                        "let \(argument.name.value): \(swiftTypeName(argument.type))"
-                                    )
+                            if !field.arguments.isEmpty {
+                                try scoped(
+                                    "struct \(field.name.value.capitalizeFirst)Arguments: Codable",
+                                    scope: .curly
+                                ) {
+                                    for argument in field.arguments {
+                                        try println(
+                                            "let \(argument.name.value): \(swiftTypeName(argument.type))"
+                                        )
+                                    }
                                 }
+                                println()
                             }
-                            println()
+                            let argumentName = field.arguments.isEmpty ? "No" : field.name.value.capitalizeFirst
                             try scoped(
-                                "func _\(field.name.value)<ContextType>(context: ContextType, args: \(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type))",
+                                "func _\(field.name.value)<ContextType>(context: ContextType, args: \(argumentName)Arguments) async throws -> \(swiftTypeName(field.type))",
                                 scope: .curly
                             ) {
                                 scoped(
@@ -141,8 +144,9 @@ extension Generator {
                             println("associatedtype ContextType")
                             println()
                             for field in computedFields {
+                                let argumentName = field.arguments.isEmpty ? "No" : field.name.value.capitalizeFirst
                                 try println(
-                                    "func \(field.name.value)(context: ContextType, args: \(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type))"
+                                    "func \(field.name.value)(context: ContextType, args: \(argumentName)Arguments) async throws -> \(swiftTypeName(field.type))"
                                 )
                             }
                         }
@@ -360,7 +364,11 @@ extension Generator {
                 scoped(typeDeclaration, scope: .curly) {
                     for field in object.fields {
                         if field.arguments.isEmpty {
-                            println("Field(\"\(field.name.value)\", at: \\.\(field.name.value))")
+                            if options.computedFields[object.name.value, default: []].contains(where: { $0 == field.name.value }) {
+                                println("Field(\"\(field.name.value)\", at: \(object.name.value)._\(field.name.value))")
+                            } else {
+                                println("Field(\"\(field.name.value)\", at: \\.\(field.name.value))")
+                            }
                         } else {
                             scoped(
                                 "Field(\"\(field.name.value)\", at: \(object.name.value)._\(field.name.value))",
