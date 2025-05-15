@@ -10,15 +10,20 @@ struct GeneratorError: Error {
 public struct GeneratorOptions {
     let namespace: String
     let additionalImports: [String]
+    let computedFields: [String: [String]]
     let typeMapping: [String: String]
     let generateDefaultImplementation: Bool
 
     public init(
-        namespace: String = "Generated", additionalImports: [String] = [],
-        typeMapping: [String: String] = [:], generateDefaultImplementation: Bool = true
+        namespace: String = "Generated",
+        additionalImports: [String] = [],
+        computedFields: [String: [String]] = [:],
+        typeMapping: [String: String] = [:],
+        generateDefaultImplementation: Bool = true
     ) {
         self.namespace = namespace
         self.additionalImports = additionalImports
+        self.computedFields = computedFields
         self.typeMapping = typeMapping
         self.generateDefaultImplementation = generateDefaultImplementation
     }

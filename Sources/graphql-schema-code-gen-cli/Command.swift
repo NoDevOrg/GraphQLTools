@@ -26,6 +26,21 @@ struct Command: AsyncParsableCommand {
     var typeMapping: [(String, String)] = []
 
     @Option(
+        help: "Create computed fields for the given object type. Format as `ObjectType:FieldName`.",
+        transform: { argument in
+            guard !argument.contains(" ") else {
+                throw ValidationError("computed field contains space")
+            }
+            let parts = argument.split(separator: ":")
+            guard parts.count == 2 else {
+                throw ValidationError("computed field must be expressed as key:value")
+            }
+            return (String(parts[0]), String(parts[1]))
+        }
+    )
+    var computedFields: [(String, String)] = []
+
+    @Option(
         help:
             "Path to GraphQL schema file. Multiple files can be used but they will be treated as a single schema.",
         completion: .file(),
@@ -54,12 +69,18 @@ struct Command: AsyncParsableCommand {
         }
 
         let typeMapping = Dictionary(uniqueKeysWithValues: self.typeMapping)
+        var computedFields: [String: [String]] = [:]
+        for (objectType, fieldName) in self.computedFields {
+            computedFields[objectType, default: []].append(fieldName)
+        }
+
         let generator: Generator
         do {
             generator = try Generator(
                 options: GeneratorOptions(
                     namespace: namespace,
                     additionalImports: additionalImports,
+                    computedFields: computedFields,
                     typeMapping: typeMapping
                 ),
                 schemas: schemas
