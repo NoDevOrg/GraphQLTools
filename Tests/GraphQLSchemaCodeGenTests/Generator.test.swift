@@ -253,6 +253,51 @@ final class GeneratorTests: XCTestCase {
         XCTAssertNoDifference(expected, generator.code)
     }
 
+    func testObjectTypeWithCustomComputedFields() throws {
+        let schema =
+            """
+            type Planet {
+                id: ID!
+                galaxy: Galaxy
+            }
+            """
+        let generator = try Generator(
+            options: GeneratorOptions(computedFields: [
+                "Planet": ["galaxy"]
+            ]),
+            schemas: [schema]
+        )
+        try generator.printObjectTypes()
+
+        let expected =
+            """
+
+            // MARK: - Types
+            extension GeneratedSchema {
+              struct Planet: Codable {
+                let id: ID
+
+                func _galaxy<ContextType>(context: ContextType, args: NoArguments) async throws -> Galaxy? {
+                  guard let resolver = self as? any GeneratedSchema.Planet.Resolver<ContextType> else {
+                    throw GeneratedSchemaError(description: "Planet.galaxy is unimplemented")
+                  }
+
+                  return try await resolver.galaxy(context: context, args: args)
+                }
+
+                protocol Resolver<ContextType> {
+                  associatedtype ContextType
+
+                  func galaxy(context: ContextType, args: NoArguments) async throws -> Galaxy?
+                }
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
     func testObjectTypesMultipleComputedFields() throws {
         let schema =
             """
@@ -889,6 +934,49 @@ final class GeneratorTests: XCTestCase {
                     }
                     Interface(Node.self) {
                       Field("id", at: \\.id)
+                    }
+                  }
+                  .build()
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testSchemaBuilderWithComputedFields() throws {
+        let schema =
+            """
+            type Planet {
+              id: ID!
+              galaxy: Galaxy
+            } 
+            """
+
+        let generator = try Generator(
+            options: GeneratorOptions(computedFields: [
+                "Planet": [
+                    "galaxy"
+                ]
+            ]),
+            schemas: [schema]
+        )
+        try generator.printSchemaBuilder()
+
+        let expected =
+            """
+
+            // MARK: - Schema Builder
+            extension GeneratedSchema {
+              static func schema<Resolver>(coders: Coders = Coders()) throws -> Schema<Resolver, Resolver.ContextType> where Resolver: GeneratedResolver {
+                try SchemaBuilder(Resolver.self, Resolver.ContextType.self)
+                  .setCoders(to: coders)
+                  .setFederatedSDL(to: sdl)
+                  .add {
+                    Type(Planet.self, as: "Planet") {
+                      Field("id", at: \\.id)
+                      Field("galaxy", at: Planet._galaxy)
                     }
                   }
                   .build()

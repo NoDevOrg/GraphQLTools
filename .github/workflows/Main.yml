@@ -7,7 +7,12 @@ on:
 
 jobs:
   unit-tests:
+    name: Unit Tests (Swift ${{ matrix.swift }})
+    strategy:
+      matrix:
+        swift: ["5.10", "6.0"]
     runs-on: ubuntu-latest
+    container: swift:${{ matrix.swift }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3

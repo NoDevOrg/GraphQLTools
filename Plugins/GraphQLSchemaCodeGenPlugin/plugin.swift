@@ -39,6 +39,9 @@ struct GraphQLSchemaCodeGenPlugin {
             /// Map generated types to custom types
             var typeMapping: [String: String]?
 
+            /// Custom fields to treat as computed fields
+            var computedFields: [String: [String]]?
+
             /// An array of paths to `.graphqls` files for this invocation.
             var schemaFiles: [String]
         }
@@ -108,6 +111,14 @@ struct GraphQLSchemaCodeGenPlugin {
         if let typeMapping = invocation.typeMapping {
             for (key, value) in typeMapping {
                 args.append("--type-mapping=\(key):\(value)")
+            }
+        }
+
+        if let computedFields = invocation.computedFields {
+            for (object, fields) in computedFields {
+                for field in fields {
+                    args.append("--computed-fields=\(object):\(field)")
+                }
             }
         }
 

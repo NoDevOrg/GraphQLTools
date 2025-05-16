@@ -157,6 +157,20 @@ extension [any Definition] {
 }
 
 extension ObjectTypeDefinition {
+    func basicFields(options: GeneratorOptions) -> [FieldDefinition] {
+        let overrides = options.computedFields[name.value, default: []]
+        return fields.filter {
+            $0.arguments.isEmpty && !overrides.contains($0.name.value)
+        }
+    }
+
+    func computedFields(options: GeneratorOptions) -> [FieldDefinition] {
+        let overrides = options.computedFields[name.value, default: []]
+        return fields.filter {
+            !$0.arguments.isEmpty || overrides.contains($0.name.value)
+        }
+    }
+
     func field(named: String) throws -> FieldDefinition {
         guard let field = fields.first(where: { $0.name.value == named }) else {
             throw GeneratorError(description: "Field \(named) not found on object \(name.value)")

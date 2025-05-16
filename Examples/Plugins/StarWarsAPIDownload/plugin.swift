@@ -1,8 +1,9 @@
 import Foundation
+import PackagePlugin
+
 #if canImport(FoundationNetworking)
     import FoundationNetworking
 #endif
-import PackagePlugin
 
 @main
 struct StarWarsAPIDownloadPlugin: CommandPlugin {

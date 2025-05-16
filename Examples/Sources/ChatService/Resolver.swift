@@ -40,3 +40,16 @@ extension Resolver {
             .toEventStream()
     }
 }
+
+// MARK: Message Resolver
+extension ChatSchema.Message: ChatSchema.Message.Resolver {
+    typealias ContextType = NoContext
+
+    func hash(context: NoContext, args: NoArguments) async throws -> String {
+        "\(body.hashValue)"
+    }
+
+    func likes(context: NoContext, args: NoArguments) async throws -> Int {
+        (1...10).randomElement() ?? 0
+    }
+}
