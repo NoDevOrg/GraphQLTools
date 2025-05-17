@@ -53,53 +53,52 @@ struct GraphQLSchemaCodeGenPlugin {
     static let configurationFileName = "graphql-schema-codegen-config.json"
 
     func createBuildCommands(
-        pluginWorkDirectory: PackagePlugin.Path, sourceFiles: FileList,
+        pluginWorkDirectory: String, sourceFiles: FileList,
         tool: (String) throws -> PackagePlugin.PluginContext.Tool
     ) throws -> [Command] {
         guard
             let configurationFilePath = sourceFiles.first(where: {
-                $0.path.lastComponent == Self.configurationFileName
-            })?.path
+                $0.url.lastPathComponent == Self.configurationFileName
+            })?.url.path
         else {
             throw PluginError.noConfigFound(Self.configurationFileName)
         }
 
-        let data = try Data(contentsOf: URL(fileURLWithPath: "\(configurationFilePath)"))
+        let data = try Data(contentsOf: URL(fileURLWithPath: configurationFilePath))
         let configuration = try JSONDecoder().decode(Configuration.self, from: data)
 
         try self.validateConfiguration(configuration)
 
-        let inputDirectory = configurationFilePath.removingLastComponent()
-        let graphQLSchemaCodeGenCLIPath = try tool("graphql-schema-code-gen-cli").path
+        let inputDirectoryURL = URL(fileURLWithPath: configurationFilePath).deletingLastPathComponent()
+        let graphQLSchemaCodeGenCLITool = try tool("graphql-schema-code-gen-cli")
 
         return configuration.invocations.map { invocation in
             invokeCLI(
                 invocation: invocation,
-                cliPath: graphQLSchemaCodeGenCLIPath,
-                inputDirectory: inputDirectory,
-                outputDirectory: pluginWorkDirectory
+                cliToolURL: graphQLSchemaCodeGenCLITool.url,
+                inputDirectoryURL: inputDirectoryURL,
+                outputDirectoryURL: URL(fileURLWithPath: pluginWorkDirectory)
             )
         }
     }
 
     private func invokeCLI(
-        invocation: Configuration.Invocation, cliPath: Path, inputDirectory: Path,
-        outputDirectory: Path
+        invocation: Configuration.Invocation, cliToolURL: URL, inputDirectoryURL: URL,
+        outputDirectoryURL: URL
     ) -> Command {
-        var inputFiles = [Path]()
-        var outputFiles = [Path]()
+        var inputFiles = [URL]()
+        var outputFiles = [URL]()
         var args = [String]()
 
         if let namespace = invocation.namespace {
             args.append("--namespace=\(namespace)")
-            outputFiles.append(outputDirectory.appending("\(namespace)Schema.swift"))
-            args.append(
-                "--output-path=\(outputDirectory.appending("\(namespace)Schema.swift").description)"
-            )
+            let outputFileURL = outputDirectoryURL.appendingPathComponent("\(namespace)Schema.swift")
+            outputFiles.append(outputFileURL)
+            args.append("--output-path=\(outputFileURL.path)")
         } else {
-            outputFiles.append(outputDirectory.appending("GeneratedSchema.swift"))
-            args.append(
-                "--output-path=\(outputDirectory.appending("GeneratedSchema.swift").description)")
+            let outputFileURL = outputDirectoryURL.appendingPathComponent("GeneratedSchema.swift")
+            outputFiles.append(outputFileURL)
+            args.append("--output-path=\(outputFileURL.path)")
         }
 
         if let additionalImports = invocation.additionalImports {
@@ -123,15 +122,16 @@ struct GraphQLSchemaCodeGenPlugin {
         }
 
         for schemaFile in invocation.schemaFiles {
-            args.append("--schema-path=\(inputDirectory.appending(schemaFile).description)")
-            inputFiles.append(inputDirectory.appending(schemaFile))
+            let schemaFileURL = inputDirectoryURL.appendingPathComponent(schemaFile)
+            args.append("--schema-path=\(schemaFileURL.path)")
+            inputFiles.append(schemaFileURL)
         }
 
         return Command.buildCommand(
             displayName: "Generating GraphQL Schema",
-            executable: cliPath,
+            executable: cliToolURL,
             arguments: args,
-            inputFiles: inputFiles + [cliPath],
+            inputFiles: inputFiles + [cliToolURL],
             outputFiles: outputFiles
         )
     }
@@ -149,7 +149,7 @@ struct GraphQLSchemaCodeGenPlugin {
 }
 
 #if canImport(PackagePlugin)
-    import PackagePlugin
+    @preconcurrency import PackagePlugin
 
     extension GraphQLSchemaCodeGenPlugin: BuildToolPlugin {
         func createBuildCommands(context: PluginContext, target: any Target) async throws
@@ -159,7 +159,7 @@ struct GraphQLSchemaCodeGenPlugin {
                 throw PluginError.invalidTarget(target)
             }
             return try self.createBuildCommands(
-                pluginWorkDirectory: context.pluginWorkDirectory,
+                pluginWorkDirectory: context.pluginWorkDirectoryURL.path,
                 sourceFiles: swiftTarget.sourceFiles,
                 tool: context.tool
             )
@@ -168,14 +168,14 @@ struct GraphQLSchemaCodeGenPlugin {
 #endif
 
 #if canImport(XcodeProjectPlugin)
-    import XcodeProjectPlugin
+    @preconcurrency import XcodeProjectPlugin
 
     extension GraphQLSchemaCodeGenPlugin: XcodeBuildToolPlugin {
         func createBuildCommands(context: XcodePluginContext, target: XcodeTarget) throws
             -> [Command]
         {
             return try self.createBuildCommands(
-                pluginWorkDirectory: context.pluginWorkDirectory,
+                pluginWorkDirectory: context.pluginWorkDirectoryURL.path,
                 sourceFiles: target.inputFiles,
                 tool: context.tool
             )
