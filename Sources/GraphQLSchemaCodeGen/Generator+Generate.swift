@@ -85,21 +85,32 @@ extension Generator {
     }
 
     func printObjectTypes() throws {
-        guard !data.objects.isEmpty || !data.inputs.isEmpty else { return }
+        guard !data.objects.isEmpty || !data.inputs.isEmpty || !data.enums.isEmpty
+            || !data.interfaces.isEmpty || !data.unions.isEmpty
+        else { return }
         println()
         mark("Types")
         try scoped("extension \(data.schemaName)", scope: .curly) {
             try looped(data.objects) { object in
-                let objectInterfaces = object.interfaces.map { $0.name.value } + ["Codable"]
+                // Build conformance list: union protocols + interfaces + Codable
+                var conformances: [String] = []
+                for (unionName, members) in data.unionMembers {
+                    if members.contains(object.name.value) {
+                        conformances.append(unionName.escapedIfKeyword)
+                    }
+                }
+                conformances += object.interfaces.map { $0.name.value.escapedIfKeyword }
+                conformances.append("Codable")
+
                 try scoped(
-                    "struct \(object.name.value): \(objectInterfaces.joined(separator: ", "))",
+                    "struct \(object.name.value.escapedIfKeyword): \(conformances.joined(separator: ", "))",
                     scope: .curly
                 ) {
-                    let basicFields = object.basicFields(options: options)
-                    let computedFields = object.computedFields(options: options)
+                    let basicFields = object.basicFields(effectiveComputed: data.effectiveComputedFields)
+                    let computedFields = object.computedFields(effectiveComputed: data.effectiveComputedFields)
 
                     for field in basicFields {
-                        try println("let \(field.name.value): \(swiftTypeName(field.type))")
+                        try println("let \(field.name.value.escapedIfKeyword): \(swiftTypeName(field.type))")
                     }
 
                     if !computedFields.isEmpty {
@@ -113,7 +124,7 @@ extension Generator {
                                 ) {
                                     for argument in field.arguments {
                                         try println(
-                                            "let \(argument.name.value): \(swiftTypeName(argument.type))"
+                                            "let \(argument.name.value.escapedIfKeyword): \(swiftTypeName(argument.type))"
                                         )
                                     }
                                 }
@@ -121,11 +132,11 @@ extension Generator {
                             }
                             let argumentName = field.arguments.isEmpty ? "No" : field.name.value.capitalizeFirst
                             try scoped(
-                                "func _\(field.name.value)<ContextType>(context: ContextType, args: \(argumentName)Arguments) async throws -> \(swiftTypeName(field.type))",
+                                "func _\(field.name.value.escapedIfKeyword)<ContextType>(context: ContextType, args: \(argumentName)Arguments) async throws -> \(swiftTypeName(field.type))",
                                 scope: .curly
                             ) {
                                 scoped(
-                                    "guard let resolver = self as? any \(data.schemaName).\(object.name.value).Resolver<ContextType> else",
+                                    "guard let resolver = self as? any \(data.schemaName).\(object.name.value.escapedIfKeyword).Resolver<ContextType> else",
                                     scope: .curly
                                 ) {
                                     printThrowError(
@@ -133,7 +144,7 @@ extension Generator {
                                 }
                                 println()
                                 println(
-                                    "return try await resolver.\(field.name.value)(context: context, args: args)"
+                                    "return try await resolver.\(field.name.value.escapedIfKeyword)(context: context, args: args)"
                                 )
                             }
                         }
@@ -146,7 +157,7 @@ extension Generator {
                             for field in computedFields {
                                 let argumentName = field.arguments.isEmpty ? "No" : field.name.value.capitalizeFirst
                                 try println(
-                                    "func \(field.name.value)(context: ContextType, args: \(argumentName)Arguments) async throws -> \(swiftTypeName(field.type))"
+                                    "func \(field.name.value.escapedIfKeyword)(context: ContextType, args: \(argumentName)Arguments) async throws -> \(swiftTypeName(field.type))"
                                 )
                             }
                         }
@@ -158,7 +169,7 @@ extension Generator {
                             for field in key.fields {
                                 let objectField = try object.field(named: field)
                                 try println(
-                                    "let \(objectField.name.value): \(swiftTypeName(objectField.type))"
+                                    "let \(objectField.name.value.escapedIfKeyword): \(swiftTypeName(objectField.type))"
                                 )
                             }
                         }
@@ -168,9 +179,10 @@ extension Generator {
             if !data.inputs.isEmpty {
                 println()
                 try looped(data.inputs) { object in
-                    try scoped("struct \(object.name.value): Codable", scope: .curly) {
+                    let keyword = data.classInputTypes.contains(object.name.value) ? "class" : "struct"
+                    try scoped("\(keyword) \(object.name.value.escapedIfKeyword): Codable", scope: .curly) {
                         for field in object.fields {
-                            try println("let \(field.name.value): \(swiftTypeName(field.type))")
+                            try println("let \(field.name.value.escapedIfKeyword): \(swiftTypeName(field.type))")
                         }
                     }
                 }
@@ -178,10 +190,10 @@ extension Generator {
             if !data.enums.isEmpty {
                 println()
                 looped(data.enums) { object in
-                    scoped("enum \(object.name.value): String, Codable", scope: .curly) {
+                    scoped("enum \(object.name.value.escapedIfKeyword): String, Codable", scope: .curly) {
                         for value in object.values {
                             println(
-                                "case \(value.name.value.lowercased()) = \"\(value.name.value)\"")
+                                "case \(value.name.value.lowercased().escapedIfKeyword) = \"\(value.name.value)\"")
                         }
                     }
                 }
@@ -189,11 +201,18 @@ extension Generator {
             if !data.interfaces.isEmpty {
                 println()
                 try looped(data.interfaces) { interface in
-                    try scoped("protocol \(interface.name.value)", scope: .curly) {
+                    try scoped("protocol \(interface.name.value.escapedIfKeyword)", scope: .curly) {
                         for field in interface.fields {
                             try println(
-                                "var \(field.name.value): \(swiftTypeName(field.type)) { get }")
+                                "var \(field.name.value.escapedIfKeyword): \(swiftTypeName(field.type)) { get }")
                         }
+                    }
+                }
+            }
+            if !data.unions.isEmpty {
+                println()
+                looped(data.unions) { union in
+                    scoped("protocol \(union.name.value.escapedIfKeyword): Sendable", scope: .curly) {
                     }
                 }
             }
@@ -203,13 +222,14 @@ extension Generator {
     func printObjectResolverDefaultImplementation() throws {
         guard options.generateDefaultImplementation else { return }
         for object in data.objects {
-            let computedFields = object.fields.filter { !$0.arguments.isEmpty }
+            let computedFields = object.computedFields(effectiveComputed: data.effectiveComputedFields)
             guard !computedFields.isEmpty else { continue }
             println()
-            try scoped("extension \(data.schemaName).\(object.name.value).Resolver", scope: .curly) {
+            try scoped("extension \(data.schemaName).\(object.name.value.escapedIfKeyword).Resolver", scope: .curly) {
                 try looped(computedFields) { field in
+                    let argumentName = field.arguments.isEmpty ? "No" : "\(data.schemaName).\(object.name.value.escapedIfKeyword).\(field.name.value.capitalizeFirst)"
                     try scoped(
-                        "func \(field.name.value)(context: ContextType, args: \(data.schemaName).\(object.name.value).\(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type, namespace: data.schemaName))",
+                        "func \(field.name.value.escapedIfKeyword)(context: ContextType, args: \(argumentName)Arguments) async throws -> \(swiftTypeName(field.type, namespace: data.schemaName))",
                         scope: .curly
                     ) {
                         printThrowError(
@@ -229,7 +249,7 @@ extension Generator {
                     "struct \(field.name.value.capitalizeFirst)Arguments: Codable", scope: .curly
                 ) {
                     for argument in field.arguments {
-                        try println("let \(argument.name.value): \(swiftTypeName(argument.type))")
+                        try println("let \(argument.name.value.escapedIfKeyword): \(swiftTypeName(argument.type))")
                     }
                 }
             }
@@ -245,18 +265,18 @@ extension Generator {
                 println()
                 for field in (data.queryFields + data.mutationFields) {
                     try println(
-                        "func \(field.name.value)(context: ContextType, args: \(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type))"
+                        "func \(field.name.value.escapedIfKeyword)(context: ContextType, args: \(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type))"
                     )
                 }
                 for field in data.subscriptionFields {
                     try println(
-                        "func \(field.name.value)(context: ContextType, args: \(field.name.value.capitalizeFirst)Arguments) async throws -> EventStream<\(swiftTypeName(field.type))>"
+                        "func \(field.name.value.escapedIfKeyword)(context: ContextType, args: \(field.name.value.capitalizeFirst)Arguments) async throws -> EventStream<\(swiftTypeName(field.type))>"
                     )
                 }
                 for (object, keys) in data.objectsWithFederationKeys {
                     for key in keys {
                         println(
-                            "func \(object.name.value.lowercased())(context: ContextType, key: \(object.name.value).\(key.name)) async throws -> \(object.name.value)?"
+                            "func \(object.name.value.lowercased().escapedIfKeyword)(context: ContextType, key: \(object.name.value.escapedIfKeyword).\(key.name)) async throws -> \(object.name.value.escapedIfKeyword)?"
                         )
                     }
                 }
@@ -271,7 +291,7 @@ extension Generator {
         try scoped("extension \(data.schemaName).\(data.resolverName)", scope: .curly) {
             try looped(data.queryFields) { field in
                 try scoped(
-                    "func \(field.name.value)(context: ContextType, args: \(data.schemaName).\(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type, namespace: data.schemaName))",
+                    "func \(field.name.value.escapedIfKeyword)(context: ContextType, args: \(data.schemaName).\(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type, namespace: data.schemaName))",
                     scope: .curly
                 ) {
                     printThrowError("Resolver for query.\(field.name.value) is unimplemented.")
@@ -282,7 +302,7 @@ extension Generator {
             }
             try looped(data.mutationFields) { field in
                 try scoped(
-                    "func \(field.name.value)(context: ContextType, args: \(data.schemaName).\(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type, namespace: data.schemaName))",
+                    "func \(field.name.value.escapedIfKeyword)(context: ContextType, args: \(data.schemaName).\(field.name.value.capitalizeFirst)Arguments) async throws -> \(swiftTypeName(field.type, namespace: data.schemaName))",
                     scope: .curly
                 ) {
                     printThrowError("Resolver for mutation.\(field.name.value) is unimplemented.")
@@ -293,7 +313,7 @@ extension Generator {
             }
             try looped(data.subscriptionFields) { field in
                 try scoped(
-                    "func \(field.name.value)(context: ContextType, args: \(data.schemaName).\(field.name.value.capitalizeFirst)Arguments) async throws -> EventStream<\(swiftTypeName(field.type, namespace: data.schemaName))>",
+                    "func \(field.name.value.escapedIfKeyword)(context: ContextType, args: \(data.schemaName).\(field.name.value.capitalizeFirst)Arguments) async throws -> EventStream<\(swiftTypeName(field.type, namespace: data.schemaName))>",
                     scope: .curly
                 ) {
                     printThrowError(
@@ -306,7 +326,7 @@ extension Generator {
             looped(data.objectsWithFederationKeys) { (object, keys) in
                 for key in keys {
                     scoped(
-                        "func \(object.name.value.lowercased())(context: ContextType, key: \(data.schemaName).\(object.name.value).\(key.name)) async throws -> \(data.schemaName).\(object.name.value)?",
+                        "func \(object.name.value.lowercased().escapedIfKeyword)(context: ContextType, key: \(data.schemaName).\(object.name.value.escapedIfKeyword).\(key.name)) async throws -> \(data.schemaName).\(object.name.value.escapedIfKeyword)?",
                         scope: .curly
                     ) {
                         printThrowError(
@@ -343,7 +363,7 @@ extension Generator {
     func printSchemaBuilderTypes() throws {
         try scoped(".add", scope: .curly) {
             for scalar in data.scalars {
-                println("Scalar(\(scalar.name.value).self, as: \"\(scalar.name.value)\")")
+                println("Scalar(\(scalar.name.value.escapedIfKeyword).self, as: \"\(scalar.name.value)\")")
                 if let description = scalar.description?.value {
                     indent()
                     println(".description(\"\(description)\")")
@@ -351,66 +371,74 @@ extension Generator {
                 }
             }
             for object in data.objects {
-                let objectInterfaces = object.interfaces.map { "\($0.name.value).self" }
+                let objectInterfaces = object.interfaces.map { "\($0.name.value.escapedIfKeyword).self" }
                 let typeDeclaration: String
                 if objectInterfaces.isEmpty {
                     typeDeclaration =
-                        "Type(\(object.name.value).self, as: \"\(object.name.value)\")"
+                        "Type(\(object.name.value.escapedIfKeyword).self, as: \"\(object.name.value)\")"
                 } else {
                     typeDeclaration =
-                        "Type(\(object.name.value).self, as: \"\(object.name.value)\", interfaces: [\(objectInterfaces.joined(separator: ", "))])"
+                        "Type(\(object.name.value.escapedIfKeyword).self, as: \"\(object.name.value)\", interfaces: [\(objectInterfaces.joined(separator: ", "))])"
                 }
 
+                let effectiveOverrides = data.effectiveComputedFields[object.name.value, default: []]
                 scoped(typeDeclaration, scope: .curly) {
                     for field in object.fields {
-                        if field.arguments.isEmpty {
-                            if options.computedFields[object.name.value, default: []].contains(where: { $0 == field.name.value }) {
-                                println("Field(\"\(field.name.value)\", at: \(object.name.value)._\(field.name.value))")
+                        let isComputed = !field.arguments.isEmpty || effectiveOverrides.contains(field.name.value)
+                        if isComputed {
+                            if field.arguments.isEmpty {
+                                println("Field(\"\(field.name.value)\", at: \(object.name.value.escapedIfKeyword)._\(field.name.value.escapedIfKeyword))")
                             } else {
-                                println("Field(\"\(field.name.value)\", at: \\.\(field.name.value))")
-                            }
-                        } else {
-                            scoped(
-                                "Field(\"\(field.name.value)\", at: \(object.name.value)._\(field.name.value))",
-                                scope: .curly
-                            ) {
-                                for argument in field.arguments {
-                                    println(
-                                        "Argument(\"\(argument.name.value)\", at: \\.\(argument.name.value))"
-                                    )
+                                scoped(
+                                    "Field(\"\(field.name.value)\", at: \(object.name.value.escapedIfKeyword)._\(field.name.value.escapedIfKeyword))",
+                                    scope: .curly
+                                ) {
+                                    for argument in field.arguments {
+                                        println(
+                                            "Argument(\"\(argument.name.value)\", at: \\.\(argument.name.value.escapedIfKeyword))"
+                                        )
+                                    }
                                 }
                             }
+                        } else {
+                            println("Field(\"\(field.name.value)\", at: \\.\(field.name.value.escapedIfKeyword))")
                         }
                     }
                 }
                 for keys in try object.federationKeys() {
-                    scoped(".key(at: Resolver.\(object.name.value.lowercased()))", scope: .curly) {
+                    scoped(".key(at: Resolver.\(object.name.value.lowercased().escapedIfKeyword))", scope: .curly) {
                         for field in keys.fields {
-                            println("Argument(\"\(field)\", at: \\.\(field))")
+                            println("Argument(\"\(field)\", at: \\.\(field.escapedIfKeyword))")
                         }
                     }
                 }
             }
+            for union in data.unions {
+                let memberTypes = data.unionMembers[union.name.value, default: []]
+                    .map { "\($0.escapedIfKeyword).self" }
+                    .joined(separator: ", ")
+                println("Union(\(union.name.value.escapedIfKeyword).self, members: \(memberTypes))")
+            }
             for input in data.inputs {
                 scoped(
-                    "Input(\(input.name.value).self, as: \"\(input.name.value)\")", scope: .curly
+                    "Input(\(input.name.value.escapedIfKeyword).self, as: \"\(input.name.value)\")", scope: .curly
                 ) {
                     for field in input.fields {
-                        println("InputField(\"\(field.name.value)\", at: \\.\(field.name.value))")
+                        println("InputField(\"\(field.name.value)\", at: \\.\(field.name.value.escapedIfKeyword))")
                     }
                 }
             }
             for object in data.enums {
-                scoped("Enum(\(object.name.value).self)", scope: .curly) {
+                scoped("Enum(\(object.name.value.escapedIfKeyword).self)", scope: .curly) {
                     for value in object.values {
-                        println("Value(.\(value.name.value.lowercased()))")
+                        println("Value(.\(value.name.value.lowercased().escapedIfKeyword))")
                     }
                 }
             }
             for interface in data.interfaces {
-                scoped("Interface(\(interface.name.value).self)", scope: .curly) {
+                scoped("Interface(\(interface.name.value.escapedIfKeyword).self)", scope: .curly) {
                     for field in interface.fields {
-                        println("Field(\"\(field.name.value)\", at: \\.\(field.name.value))")
+                        println("Field(\"\(field.name.value)\", at: \\.\(field.name.value.escapedIfKeyword))")
                     }
                 }
             }
@@ -422,12 +450,12 @@ extension Generator {
         scoped(".addQuery", scope: .curly) {
             for field in data.queryFields {
                 scoped(
-                    "Field(\"\(field.name.value)\", at: Resolver.\(field.name.value))",
+                    "Field(\"\(field.name.value)\", at: Resolver.\(field.name.value.escapedIfKeyword))",
                     scope: .curly
                 ) {
                     for argument in field.arguments {
                         println(
-                            "Argument(\"\(argument.name.value)\", at: \\.\(argument.name.value))")
+                            "Argument(\"\(argument.name.value)\", at: \\.\(argument.name.value.escapedIfKeyword))")
                     }
                 }
             }
@@ -439,12 +467,12 @@ extension Generator {
         scoped(".addMutation", scope: .curly) {
             for field in data.mutationFields {
                 scoped(
-                    "Field(\"\(field.name.value)\", at: Resolver.\(field.name.value))",
+                    "Field(\"\(field.name.value)\", at: Resolver.\(field.name.value.escapedIfKeyword))",
                     scope: .curly
                 ) {
                     for argument in field.arguments {
                         println(
-                            "Argument(\"\(argument.name.value)\", at: \\.\(argument.name.value))")
+                            "Argument(\"\(argument.name.value)\", at: \\.\(argument.name.value.escapedIfKeyword))")
                     }
                 }
             }
@@ -456,12 +484,12 @@ extension Generator {
         try scoped(".addSubscription", scope: .curly) {
             for field in data.subscriptionFields {
                 try scoped(
-                    "SubscriptionField(\"\(field.name.value)\", as: \(swiftTypeName(field.type)).self, atSub: Resolver.\(field.name.value))",
+                    "SubscriptionField(\"\(field.name.value)\", as: \(swiftTypeName(field.type)).self, atSub: Resolver.\(field.name.value.escapedIfKeyword))",
                     scope: .curly
                 ) {
                     for argument in field.arguments {
                         println(
-                            "Argument(\"\(argument.name.value)\", at: \\.\(argument.name.value))")
+                            "Argument(\"\(argument.name.value)\", at: \\.\(argument.name.value.escapedIfKeyword))")
                     }
                 }
             }

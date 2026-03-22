@@ -9,10 +9,24 @@ struct GeneratorData {
     let enums: [EnumTypeDefinition]
     let scalars: [ScalarTypeDefinition]
     let interfaces: [InterfaceTypeDefinition]
+    let unions: [UnionTypeDefinition]
     let queryFields: [FieldDefinition]
     let mutationFields: [FieldDefinition]
     let subscriptionFields: [FieldDefinition]
     let objectsWithFederationKeys: [(object: ObjectTypeDefinition, keys: [(name: String, fields: [String])])]
+
+    /// Merged computed fields map: user overrides + auto-detected (union-typed fields, cycle-breaking).
+    /// Key = object type name, Value = set of field names that should be computed.
+    let effectiveComputedFields: [String: Set<String>]
+
+    /// Map from union name to its member type names.
+    let unionMembers: [String: [String]]
+
+    /// Set of all union type names for quick lookup.
+    let unionTypeNames: Set<String>
+
+    /// Input types that must be emitted as `class` instead of `struct` to break cycles.
+    let classInputTypes: Set<String>
 
     init(options: GeneratorOptions, schemas: [String]) throws {
         self.schemaName = options.namespace + "Schema"
@@ -78,6 +92,7 @@ struct GeneratorData {
         self.enums = definitions.enums
         self.scalars = definitions.scalars
         self.interfaces = definitions.interfaces
+        self.unions = definitions.unions
 
         self.queryFields = definitions.objects(named: queryObjectName).flatMap { $0.fields }
         self.mutationFields = definitions.objects(named: mutationObjectName).flatMap { $0.fields }
@@ -87,6 +102,210 @@ struct GeneratorData {
         self.objectsWithFederationKeys = try definitions.objects
             .map { try ($0, $0.federationKeys()) }
             .filter { !$0.keys.isEmpty }
+
+        // Build union lookup tables
+        var unionMembers: [String: [String]] = [:]
+        var unionTypeNames: Set<String> = []
+        for union in self.unions {
+            let memberNames = union.types.map { $0.name.value }
+            unionMembers[union.name.value] = memberNames
+            unionTypeNames.insert(union.name.value)
+        }
+        self.unionMembers = unionMembers
+        self.unionTypeNames = unionTypeNames
+
+        // Build effective computed fields: start with user overrides
+        var effective: [String: Set<String>] = [:]
+        for (objectName, fields) in options.computedFields {
+            effective[objectName] = Set(fields)
+        }
+
+        // Auto-promote union-typed fields to computed (can't be stored as protocol existentials)
+        for object in self.objects {
+            for field in object.fields {
+                let referencedType = Self.namedTypeName(field.type)
+                if let typeName = referencedType, unionTypeNames.contains(typeName) {
+                    effective[object.name.value, default: []].insert(field.name.value)
+                }
+            }
+        }
+
+        // Detect cycles in object types and auto-break them
+        let objectTypeNames = Set(self.objects.map { $0.name.value })
+        let cycleBreakers = Self.detectCycleBreakingFields(
+            types: self.objects.map { ($0.name.value, $0.fields) },
+            knownTypeNames: objectTypeNames,
+            existingComputed: effective
+        )
+        for (typeName, fieldName) in cycleBreakers {
+            effective[typeName, default: []].insert(fieldName)
+            fputs(
+                "warning: Auto-promoting \(typeName).\(fieldName) to computed field to break type cycle\n",
+                stderr
+            )
+        }
+
+        self.effectiveComputedFields = effective
+
+        // Detect cycles in input types — these use `class` instead of `struct`
+        let inputTypeNames = Set(self.inputs.map { $0.name.value })
+        let inputCycleTypes = Self.detectCycleBreakingTypes(
+            types: self.inputs.map { ($0.name.value, $0.fields) },
+            knownTypeNames: inputTypeNames
+        )
+        self.classInputTypes = inputCycleTypes
+        for typeName in inputCycleTypes {
+            fputs(
+                "warning: Emitting input type \(typeName) as class to break type cycle\n",
+                stderr
+            )
+        }
+    }
+
+    /// Extracts the named type from a (potentially wrapped) GraphQL type, ignoring lists.
+    /// Returns nil for list types since arrays break cycles naturally.
+    static func namedTypeName(_ type: Type) -> String? {
+        switch type {
+        case let named as NamedType:
+            return named.name.value
+        case let nonNull as NonNullType:
+            return namedTypeName(nonNull.type)
+        case is ListType:
+            // Arrays store on heap — no infinite-size issue
+            return nil
+        default:
+            return nil
+        }
+    }
+
+    /// Detect fields that need to become computed to break cycles in object types.
+    /// Returns pairs of (typeName, fieldName) to promote.
+    static func detectCycleBreakingFields(
+        types: [(name: String, fields: [FieldDefinition])],
+        knownTypeNames: Set<String>,
+        existingComputed: [String: Set<String>]
+    ) -> [(String, String)] {
+        // Build adjacency: type -> [(referencedType, fieldName, isOptional)]
+        var adjacency: [String: [(target: String, field: String, optional: Bool)]] = [:]
+        for (typeName, fields) in types {
+            for field in fields {
+                // Skip fields already marked as computed
+                if existingComputed[typeName]?.contains(field.name.value) == true {
+                    continue
+                }
+                // Skip fields with arguments (already computed)
+                if !field.arguments.isEmpty {
+                    continue
+                }
+                if let referencedType = namedTypeName(field.type),
+                   knownTypeNames.contains(referencedType)
+                {
+                    let isOptional = !(field.type is NonNullType)
+                    adjacency[typeName, default: []].append(
+                        (target: referencedType, field: field.name.value, optional: isOptional)
+                    )
+                }
+            }
+        }
+
+        var result: [(String, String)] = []
+        var visited: Set<String> = []
+        var inStack: Set<String> = []
+        var removedEdges: Set<String> = [] // "TypeName.fieldName" keys for removed edges
+
+        func edgeKey(_ typeName: String, _ fieldName: String) -> String {
+            "\(typeName).\(fieldName)"
+        }
+
+        func dfs(_ node: String, path: [(type: String, field: String, optional: Bool)]) {
+            if inStack.contains(node) {
+                // Found cycle — find the back edge in the path and break it
+                guard let cycleStart = path.firstIndex(where: { $0.type == node }) else { return }
+                let cycle = Array(path[cycleStart...])
+
+                // Prefer breaking at an optional field
+                let breakIdx: Int
+                if let optIdx = cycle.firstIndex(where: { $0.optional }) {
+                    breakIdx = optIdx
+                } else {
+                    breakIdx = cycle.count - 1
+                }
+
+                let edge = cycle[breakIdx]
+                let key = edgeKey(edge.type, edge.field)
+                if !removedEdges.contains(key) {
+                    removedEdges.insert(key)
+                    result.append((edge.type, edge.field))
+                }
+                return
+            }
+
+            if visited.contains(node) { return }
+            visited.insert(node)
+            inStack.insert(node)
+
+            for edge in adjacency[node, default: []] {
+                let key = edgeKey(node, edge.field)
+                if removedEdges.contains(key) { continue }
+                dfs(edge.target, path: path + [(type: node, field: edge.field, optional: edge.optional)])
+            }
+
+            inStack.remove(node)
+        }
+
+        for (typeName, _) in types {
+            dfs(typeName, path: [])
+        }
+
+        return result
+    }
+
+    /// Detect input types that need to be emitted as `class` to break cycles.
+    /// Returns a set of type names that should use `class`.
+    static func detectCycleBreakingTypes(
+        types: [(name: String, fields: [InputValueDefinition])],
+        knownTypeNames: Set<String>
+    ) -> Set<String> {
+        // Build adjacency for input types
+        var adjacency: [String: [String]] = [:]
+        for (typeName, fields) in types {
+            for field in fields {
+                if let referencedType = namedTypeName(field.type),
+                   knownTypeNames.contains(referencedType)
+                {
+                    adjacency[typeName, default: []].append(referencedType)
+                }
+            }
+        }
+
+        // Find all types involved in cycles using DFS
+        var visited: Set<String> = []
+        var inStack: Set<String> = []
+        var cycleTypes: Set<String> = []
+
+        func dfs(_ node: String, path: [String]) {
+            if inStack.contains(node) {
+                // Found cycle — mark the node that completes the cycle as class
+                // (breaking the cycle at one point is sufficient)
+                cycleTypes.insert(node)
+                return
+            }
+            if visited.contains(node) { return }
+            visited.insert(node)
+            inStack.insert(node)
+
+            for neighbor in adjacency[node, default: []] {
+                dfs(neighbor, path: path + [node])
+            }
+
+            inStack.remove(node)
+        }
+
+        for (typeName, _) in types {
+            dfs(typeName, path: [])
+        }
+
+        return cycleTypes
     }
 }
 
@@ -151,6 +370,16 @@ extension [any Definition] {
         }
     }
 
+    var unions: [UnionTypeDefinition] {
+        self.compactMap {
+            if let union = $0 as? UnionTypeDefinition { return union }
+            if let unionExtension = $0 as? UnionExtensionDefinition {
+                return unionExtension.definition
+            }
+            return nil
+        }
+    }
+
     func objects(named: String) -> [ObjectTypeDefinition] {
         objects.filter { $0.name.value == named }
     }
@@ -164,8 +393,22 @@ extension ObjectTypeDefinition {
         }
     }
 
+    func basicFields(effectiveComputed: [String: Set<String>]) -> [FieldDefinition] {
+        let overrides = effectiveComputed[name.value, default: []]
+        return fields.filter {
+            $0.arguments.isEmpty && !overrides.contains($0.name.value)
+        }
+    }
+
     func computedFields(options: GeneratorOptions) -> [FieldDefinition] {
         let overrides = options.computedFields[name.value, default: []]
+        return fields.filter {
+            !$0.arguments.isEmpty || overrides.contains($0.name.value)
+        }
+    }
+
+    func computedFields(effectiveComputed: [String: Set<String>]) -> [FieldDefinition] {
+        let overrides = effectiveComputed[name.value, default: []]
         return fields.filter {
             !$0.arguments.isEmpty || overrides.contains($0.name.value)
         }
@@ -224,10 +467,12 @@ extension Generator {
     {
         switch type {
         case let type as NamedType:
-            if nestedInNonNull {
-                return swiftTypeMapping(type.name.value, namespace: namespace)
+            let name = swiftTypeMapping(type.name.value, namespace: namespace)
+            let isUnion = data.unionTypeNames.contains(type.name.value)
+            if isUnion {
+                return nestedInNonNull ? "any \(name)" : "(any \(name))?"
             } else {
-                return "\(swiftTypeMapping(type.name.value, namespace: namespace))?"
+                return nestedInNonNull ? name : "\(name)?"
             }
         case let type as NonNullType:
             return try swiftTypeName(type.type, namespace: namespace, nestedInNonNull: true)
