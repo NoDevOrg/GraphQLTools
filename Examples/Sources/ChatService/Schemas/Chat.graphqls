@@ -10,12 +10,82 @@ type Message {
     likes: Int!
 }
 
+# Edge case: Union types
+type Attachment {
+    url: String!
+    name: String!
+}
+
+type Reaction {
+    emoji: String!
+    count: Int!
+}
+
+union MessageExtra = Attachment | Reaction
+
+# Edge case: Interface with implementers
+interface Renderable {
+    preview: String!
+}
+
+type RichText implements Renderable {
+    preview: String!
+    html: String!
+}
+
+type MediaEmbed implements Renderable {
+    preview: String!
+    mediaUrl: String!
+}
+
+# Edge case: Type with interface-typed field (direct reference)
+type Card {
+    id: ID!
+    content: Renderable
+}
+
+# Edge case: Type with list of interface-typed fields
+type Dashboard {
+    id: ID!
+    widgets: [Renderable!]!
+}
+
+# Edge case: Type with union-typed field
+type Notification {
+    id: ID!
+    extra: MessageExtra
+}
+
+# Edge case: Keyword-named fields (stored + computed)
+type Assignment {
+    id: ID!
+    operator(role: String!): String
+    default: Boolean
+    class: String
+}
+
+# Edge case: Recursive input types (final class for cycle breaking)
+input ThreadInput {
+    body: String!
+    reply: ReplyInput
+}
+
+input ReplyInput {
+    body: String!
+    thread: ThreadInput
+}
+
 type Query {
     listMessages(room: String!): [Message!]!
+    assignment(id: ID!): Assignment
+    dashboard(id: ID!): Dashboard
+    card(id: ID!): Card
+    notification(id: ID!): Notification
 }
 
 type Mutation {
     sendMessage(room: String!, body: String!): Message!
+    createThread(input: ThreadInput!): Message
 }
 
 type Subscription {

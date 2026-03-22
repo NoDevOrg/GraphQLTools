@@ -25,6 +25,9 @@ struct GeneratorData {
     /// Set of all union type names for quick lookup.
     let unionTypeNames: Set<String>
 
+    /// Set of all interface type names for quick lookup.
+    let interfaceTypeNames: Set<String>
+
     /// Input types that must be emitted as `class` instead of `struct` to break cycles.
     let classInputTypes: Set<String>
 
@@ -113,6 +116,7 @@ struct GeneratorData {
         }
         self.unionMembers = unionMembers
         self.unionTypeNames = unionTypeNames
+        self.interfaceTypeNames = Set(self.interfaces.map { $0.name.value })
 
         // Build effective computed fields: start with user overrides
         var effective: [String: Set<String>] = [:]
@@ -120,11 +124,13 @@ struct GeneratorData {
             effective[objectName] = Set(fields)
         }
 
-        // Auto-promote union-typed fields to computed (can't be stored as protocol existentials)
+        // Auto-promote union-typed and interface-typed fields to computed
+        // (can't be stored as protocol existentials — Codable synthesis fails)
+        let protocolTypeNames = unionTypeNames.union(self.interfaceTypeNames)
         for object in self.objects {
             for field in object.fields {
-                let referencedType = Self.namedTypeName(field.type)
-                if let typeName = referencedType, unionTypeNames.contains(typeName) {
+                let referencedType = Self.deepNamedTypeName(field.type)
+                if let typeName = referencedType, protocolTypeNames.contains(typeName) {
                     effective[object.name.value, default: []].insert(field.name.value)
                 }
             }
@@ -173,6 +179,22 @@ struct GeneratorData {
         case is ListType:
             // Arrays store on heap — no infinite-size issue
             return nil
+        default:
+            return nil
+        }
+    }
+
+    /// Extracts the named type from a (potentially wrapped) GraphQL type, including through lists.
+    /// Used for detecting protocol existential references (union/interface types) where Codable
+    /// synthesis fails regardless of list wrapping.
+    static func deepNamedTypeName(_ type: Type) -> String? {
+        switch type {
+        case let named as NamedType:
+            return named.name.value
+        case let nonNull as NonNullType:
+            return deepNamedTypeName(nonNull.type)
+        case let list as ListType:
+            return deepNamedTypeName(list.type)
         default:
             return nil
         }
@@ -468,8 +490,9 @@ extension Generator {
         switch type {
         case let type as NamedType:
             let name = swiftTypeMapping(type.name.value, namespace: namespace)
-            let isUnion = data.unionTypeNames.contains(type.name.value)
-            if isUnion {
+            let isProtocolType = data.unionTypeNames.contains(type.name.value)
+                || data.interfaceTypeNames.contains(type.name.value)
+            if isProtocolType {
                 return nestedInNonNull ? "any \(name)" : "(any \(name))?"
             } else {
                 return nestedInNonNull ? name : "\(name)?"

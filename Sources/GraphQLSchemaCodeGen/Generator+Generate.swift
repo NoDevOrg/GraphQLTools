@@ -180,7 +180,7 @@ extension Generator {
             if !data.inputs.isEmpty {
                 println()
                 try looped(data.inputs) { object in
-                    let keyword = data.classInputTypes.contains(object.name.value) ? "class" : "struct"
+                    let keyword = data.classInputTypes.contains(object.name.value) ? "final class" : "struct"
                     try scoped("\(keyword) \(object.name.value.escapedIfKeyword): Codable, Sendable", scope: .curly) {
                         for field in object.fields {
                             try println("let \(field.name.value.escapedIfKeyword): \(swiftTypeName(field.type))")
