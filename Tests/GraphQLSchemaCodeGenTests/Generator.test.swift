@@ -1016,4 +1016,588 @@ final class GeneratorTests: XCTestCase {
 
         XCTAssertNoDifference(generator.code, expected)
     }
+
+    // MARK: - Keyword Escaping Tests
+
+    func testKeywordEscapingObjectFields() throws {
+        let schema =
+            """
+            type Assignment {
+                id: ID!
+                operator: Person
+                default: Boolean
+                class: String
+            }
+
+            type Person {
+                id: ID!
+                name: String!
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+            """
+
+            // MARK: - Types
+            extension GeneratedSchema {
+              struct Assignment: Codable {
+                let id: ID
+                let `operator`: Person?
+                let `default`: Bool?
+                let `class`: String?
+              }
+
+              struct Person: Codable {
+                let id: ID
+                let name: String
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testKeywordEscapingInputFields() throws {
+        let schema =
+            """
+            type Holder {
+                id: ID!
+            }
+
+            input FilterInput {
+                operator: String
+                where: String
+                in: [ID!]
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+            """
+
+            // MARK: - Types
+            extension GeneratedSchema {
+              struct Holder: Codable {
+                let id: ID
+              }
+
+              struct FilterInput: Codable {
+                let `operator`: String?
+                let `where`: String?
+                let `in`: [ID]
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testKeywordEscapingEnumCases() throws {
+        let schema =
+            """
+            type Holder {
+                id: ID!
+            }
+
+            enum BooleanResult {
+                TRUE
+                FALSE
+                NIL
+                DEFAULT
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+            """
+
+            // MARK: - Types
+            extension GeneratedSchema {
+              struct Holder: Codable {
+                let id: ID
+              }
+
+              enum BooleanResult: String, Codable {
+                case `true` = "TRUE"
+                case `false` = "FALSE"
+                case `nil` = "NIL"
+                case `default` = "DEFAULT"
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testKeywordEscapingResolverProtocol() throws {
+        let schema =
+            """
+            type Query {
+                default(in: ID!): String
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printResolverArguments()
+
+        let expected =
+            """
+
+            // MARK: - Resolver Arguments
+            extension GeneratedSchema {
+              struct DefaultArguments: Codable {
+                let `in`: ID
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testKeywordEscapingSchemaBuilder() throws {
+        let schema =
+            """
+            type Assignment {
+                id: ID!
+                operator: String
+                default: Boolean
+            }
+
+            input FilterInput {
+                operator: String
+                where: String
+            }
+
+            enum BooleanResult {
+                TRUE
+                FALSE
+                DEFAULT
+            }
+
+            type Query {
+                assignment(id: ID!): Assignment
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printSchemaBuilder()
+
+        let expected =
+            """
+
+            // MARK: - Schema Builder
+            extension GeneratedSchema {
+              static func schema<Resolver>(coders: Coders = Coders()) throws -> Schema<Resolver, Resolver.ContextType> where Resolver: GeneratedResolver {
+                try SchemaBuilder(Resolver.self, Resolver.ContextType.self)
+                  .setCoders(to: coders)
+                  .setFederatedSDL(to: sdl)
+                  .add {
+                    Type(Assignment.self, as: "Assignment") {
+                      Field("id", at: \\.id)
+                      Field("operator", at: \\.`operator`)
+                      Field("default", at: \\.`default`)
+                    }
+                    Input(FilterInput.self, as: "FilterInput") {
+                      InputField("operator", at: \\.`operator`)
+                      InputField("where", at: \\.`where`)
+                    }
+                    Enum(BooleanResult.self) {
+                      Value(.`true`)
+                      Value(.`false`)
+                      Value(.`default`)
+                    }
+                  }
+                  .addQuery {
+                    Field("assignment", at: Resolver.assignment) {
+                      Argument("id", at: \\.id)
+                    }
+                  }
+                  .build()
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testKeywordEscapingComputedField() throws {
+        let schema =
+            """
+            type Task {
+                id: ID!
+                operator(role: String!): Person
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+            """
+
+            // MARK: - Types
+            extension GeneratedSchema {
+              struct Task: Codable {
+                let id: ID
+
+                struct OperatorArguments: Codable {
+                  let role: String
+                }
+
+                func _`operator`<ContextType>(context: ContextType, args: OperatorArguments) async throws -> Person? {
+                  guard let resolver = self as? any GeneratedSchema.Task.Resolver<ContextType> else {
+                    throw GeneratedSchemaError(description: "Task.operator is unimplemented")
+                  }
+
+                  return try await resolver.`operator`(context: context, args: args)
+                }
+
+                protocol Resolver<ContextType> {
+                  associatedtype ContextType
+
+                  func `operator`(context: ContextType, args: OperatorArguments) async throws -> Person?
+                }
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    // MARK: - Union Type Tests
+
+    func testUnionTypes() throws {
+        let schema =
+            """
+            type Dog {
+                name: String!
+                breed: String
+            }
+
+            type Cat {
+                name: String!
+                indoor: Boolean
+            }
+
+            union Pet = Dog | Cat
+
+            type Owner {
+                id: ID!
+                pet: Pet
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+            """
+
+            // MARK: - Types
+            extension GeneratedSchema {
+              struct Dog: Pet, Codable {
+                let name: String
+                let breed: String?
+              }
+
+              struct Cat: Pet, Codable {
+                let name: String
+                let indoor: Bool?
+              }
+
+              struct Owner: Codable {
+                let id: ID
+
+                func _pet<ContextType>(context: ContextType, args: NoArguments) async throws -> (any Pet)? {
+                  guard let resolver = self as? any GeneratedSchema.Owner.Resolver<ContextType> else {
+                    throw GeneratedSchemaError(description: "Owner.pet is unimplemented")
+                  }
+
+                  return try await resolver.pet(context: context, args: args)
+                }
+
+                protocol Resolver<ContextType> {
+                  associatedtype ContextType
+
+                  func pet(context: ContextType, args: NoArguments) async throws -> (any Pet)?
+                }
+              }
+
+              protocol Pet: Sendable {
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testUnionSchemaBuilder() throws {
+        let schema =
+            """
+            type Dog {
+                name: String!
+                breed: String
+            }
+
+            type Cat {
+                name: String!
+                indoor: Boolean
+            }
+
+            union Pet = Dog | Cat
+
+            type Owner {
+                id: ID!
+                pet: Pet
+            }
+
+            type Query {
+                owner(id: ID!): Owner
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printSchemaBuilder()
+
+        let expected =
+            """
+
+            // MARK: - Schema Builder
+            extension GeneratedSchema {
+              static func schema<Resolver>(coders: Coders = Coders()) throws -> Schema<Resolver, Resolver.ContextType> where Resolver: GeneratedResolver {
+                try SchemaBuilder(Resolver.self, Resolver.ContextType.self)
+                  .setCoders(to: coders)
+                  .setFederatedSDL(to: sdl)
+                  .add {
+                    Type(Dog.self, as: "Dog") {
+                      Field("name", at: \\.name)
+                      Field("breed", at: \\.breed)
+                    }
+                    Type(Cat.self, as: "Cat") {
+                      Field("name", at: \\.name)
+                      Field("indoor", at: \\.indoor)
+                    }
+                    Type(Owner.self, as: "Owner") {
+                      Field("id", at: \\.id)
+                      Field("pet", at: Owner._pet)
+                    }
+                    Union(Pet.self, members: Dog.self, Cat.self)
+                  }
+                  .addQuery {
+                    Field("owner", at: Resolver.owner) {
+                      Argument("id", at: \\.id)
+                    }
+                  }
+                  .build()
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testUnionResolverDefaultImplementation() throws {
+        let schema =
+            """
+            type Dog {
+                name: String!
+            }
+
+            type Cat {
+                name: String!
+            }
+
+            union Pet = Dog | Cat
+
+            type Owner {
+                id: ID!
+                pet: Pet
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectResolverDefaultImplementation()
+
+        let expected =
+            """
+
+            extension GeneratedSchema.Owner.Resolver {
+              func pet(context: ContextType, args: NoArguments) async throws -> (any GeneratedSchema.Pet)? {
+                throw GeneratedSchemaError(description: "Owner.pet is unimplemented.")
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    // MARK: - Circular Type Detection Tests
+
+    func testCircularTypeDetection() throws {
+        let schema =
+            """
+            type Vehicle {
+                id: ID!
+                name: String!
+                dispenser: Dispenser
+            }
+
+            type Dispenser {
+                id: ID!
+                status: String!
+                vehicle: Vehicle
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        // At least one field in the cycle should be promoted to computed
+        // The generated code should contain a Resolver protocol for the type that got the computed field
+        let code = generator.code
+
+        // Both types should be present as structs
+        XCTAssert(code.contains("struct Vehicle: Codable"), "Vehicle struct should be generated")
+        XCTAssert(code.contains("struct Dispenser: Codable"), "Dispenser struct should be generated")
+
+        // At least one field should be computed (has a Resolver protocol)
+        XCTAssert(
+            code.contains("protocol Resolver<ContextType>"),
+            "At least one type should have a Resolver protocol for cycle-breaking computed field"
+        )
+
+        // The computed field should use NoArguments (no GraphQL arguments)
+        XCTAssert(
+            code.contains("NoArguments"),
+            "Cycle-breaking computed field should use NoArguments"
+        )
+    }
+
+    func testSelfReferentialType() throws {
+        let schema =
+            """
+            type Node {
+                id: ID!
+                children: [Node!]!
+                parent: Node
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let code = generator.code
+
+        // children is an array, so it doesn't create a cycle (arrays store on heap)
+        // parent is a direct reference, so it should be promoted to computed
+        XCTAssert(code.contains("struct Node: Codable"), "Node struct should be generated")
+        XCTAssert(code.contains("let id: ID"), "id should be a stored property")
+        XCTAssert(code.contains("let children: [Node]"), "children (array) should be stored")
+        XCTAssert(
+            code.contains("func _parent"),
+            "parent should be promoted to computed field to break self-reference"
+        )
+    }
+
+    func testCircularTypeSchemaBuilder() throws {
+        let schema =
+            """
+            type Vehicle {
+                id: ID!
+                name: String!
+                dispenser: Dispenser
+            }
+
+            type Dispenser {
+                id: ID!
+                status: String!
+                vehicle: Vehicle
+            }
+
+            type Query {
+                vehicle(id: ID!): Vehicle
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printSchemaBuilder()
+
+        let code = generator.code
+
+        // The cycle-breaking field should use function reference (Type._field) not keypath
+        let hasFunctionRef =
+            code.contains("Vehicle._dispenser") || code.contains("Dispenser._vehicle")
+        XCTAssert(
+            hasFunctionRef,
+            "Cycle-breaking field should use function reference in schema builder"
+        )
+    }
+
+    // MARK: - Recursive Input Type Tests
+
+    func testRecursiveInputTypes() throws {
+        let schema =
+            """
+            type Holder {
+                id: ID!
+            }
+
+            input VehicleEventInputs {
+                amendment: AmendmentInput
+                other: String
+            }
+
+            input AmendmentInput {
+                event: VehicleEventInputs
+                reason: String
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let code = generator.code
+
+        // At least one input type should be emitted as class to break the cycle
+        XCTAssert(
+            code.contains("class VehicleEventInputs: Codable") || code.contains("class AmendmentInput: Codable"),
+            "At least one recursive input type should be emitted as class"
+        )
+
+        // The other can remain a struct
+        XCTAssert(
+            code.contains("struct VehicleEventInputs: Codable") || code.contains("struct AmendmentInput: Codable"),
+            "Non-cycle-breaking input type should remain a struct"
+        )
+    }
+
+    func testNonRecursiveInputsRemainStructs() throws {
+        let schema =
+            """
+            type Holder {
+                id: ID!
+            }
+
+            input CreateInput {
+                name: String!
+            }
+
+            input UpdateInput {
+                id: ID!
+                name: String
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let code = generator.code
+
+        // No cycles, so both should be structs
+        XCTAssert(code.contains("struct CreateInput: Codable"), "CreateInput should be a struct")
+        XCTAssert(code.contains("struct UpdateInput: Codable"), "UpdateInput should be a struct")
+        XCTAssertFalse(code.contains("class"), "No class should be generated for non-recursive inputs")
+    }
 }
