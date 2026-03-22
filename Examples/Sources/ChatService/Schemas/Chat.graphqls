@@ -75,12 +75,25 @@ input ReplyInput {
     thread: ThreadInput
 }
 
+# Edge case: Nested federation keys
+type User {
+    id: ID!
+    username: String!
+}
+
+type Conversation @key(fields: "creator { id } guest { id }") {
+    creator: User!
+    guest: User!
+    title: String
+}
+
 type Query {
     listMessages(room: String!): [Message!]!
     assignment(id: ID!): Assignment
     dashboard(id: ID!): Dashboard
     card(id: ID!): Card
     notification(id: ID!): Notification
+    conversation(creatorId: ID!, guestId: ID!): Conversation
 }
 
 type Mutation {

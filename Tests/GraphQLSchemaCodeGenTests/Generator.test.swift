@@ -476,6 +476,208 @@ final class GeneratorTests: XCTestCase {
         XCTAssertNoDifference(expected, generator.code)
     }
 
+    func testObjectTypesWithNestedFederationKey() throws {
+        let schema =
+            """
+            type User {
+                id: ID!
+                username: String!
+            }
+
+            type Conversation @key(fields: "creator { id } guest { id }") {
+                creator: User!
+                guest: User!
+                title: String
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+            """
+
+            // MARK: - Types
+            extension GeneratedSchema {
+              struct User: Codable, Sendable {
+                let id: ID
+                let username: String
+              }
+
+              struct Conversation: Codable, Sendable {
+                let creator: User
+                let guest: User
+                let title: String?
+
+                struct Key: Codable, Sendable {
+                  struct Creator: Codable, Sendable {
+                    let id: ID
+                  }
+                  struct Guest: Codable, Sendable {
+                    let id: ID
+                  }
+                  let creator: Creator
+                  let guest: Guest
+                }
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testObjectTypesWithMixedFlatAndNestedKeys() throws {
+        let schema =
+            """
+            type User @key(fields: "id") {
+                id: ID!
+                username: String!
+            }
+
+            type Conversation @key(fields: "creator { id } guest { id }") {
+                creator: User!
+                guest: User!
+                title: String
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printObjectTypes()
+
+        let expected =
+            """
+
+            // MARK: - Types
+            extension GeneratedSchema {
+              struct User: Codable, Sendable {
+                let id: ID
+                let username: String
+
+                struct Key: Codable, Sendable {
+                  let id: ID
+                }
+              }
+
+              struct Conversation: Codable, Sendable {
+                let creator: User
+                let guest: User
+                let title: String?
+
+                struct Key: Codable, Sendable {
+                  struct Creator: Codable, Sendable {
+                    let id: ID
+                  }
+                  struct Guest: Codable, Sendable {
+                    let id: ID
+                  }
+                  let creator: Creator
+                  let guest: Guest
+                }
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testResolverProtocolWithNestedFederationKey() throws {
+        let schema =
+            """
+            type User {
+                id: ID!
+                username: String!
+            }
+
+            type Conversation @key(fields: "creator { id } guest { id }") {
+                creator: User!
+                guest: User!
+                title: String
+            }
+
+            type Query {
+                conversation(id: ID!): Conversation
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printResolverProtocol()
+
+        let expected =
+            """
+
+            // MARK: - Resolver Protocol
+            extension GeneratedSchema {
+              protocol GeneratedResolver: Sendable {
+                associatedtype ContextType
+
+                func conversation(context: ContextType, args: ConversationArguments) async throws -> Conversation?
+                func conversation(context: ContextType, key: Conversation.Key) async throws -> Conversation?
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
+    func testSchemaBuilderWithNestedFederationKey() throws {
+        let schema =
+            """
+            type User {
+                id: ID!
+                username: String!
+            }
+
+            type Conversation @key(fields: "creator { id } guest { id }") {
+                creator: User!
+                guest: User!
+                title: String
+            }
+
+            type Query {
+                conversation(id: ID!): Conversation
+            }
+            """
+        let generator = try Generator(schemas: [schema])
+        try generator.printSchemaBuilder()
+
+        let expected =
+            """
+
+            // MARK: - Schema Builder
+            extension GeneratedSchema {
+              static func schema<Resolver>(coders: Coders = Coders()) throws -> Schema<Resolver, Resolver.ContextType> where Resolver: GeneratedResolver {
+                try SchemaBuilder(Resolver.self, Resolver.ContextType.self)
+                  .setCoders(to: coders)
+                  .setFederatedSDL(to: sdl)
+                  .add {
+                    Type(User.self, as: "User") {
+                      Field("id", at: \\.id)
+                      Field("username", at: \\.username)
+                    }
+                    Type(Conversation.self, as: "Conversation") {
+                      Field("creator", at: \\.creator)
+                      Field("guest", at: \\.guest)
+                      Field("title", at: \\.title)
+                    }
+                    .key(at: Resolver.conversation) {
+                      Argument("creator", at: \\.creator)
+                      Argument("guest", at: \\.guest)
+                    }
+                  }
+                  .addQuery {
+                    Field("conversation", at: Resolver.conversation) {
+                      Argument("id", at: \\.id)
+                    }
+                  }
+                  .build()
+              }
+            }
+
+            """
+
+        XCTAssertNoDifference(expected, generator.code)
+    }
+
     func testObjectTypesWithInterfaces() throws {
         let schema =
             """

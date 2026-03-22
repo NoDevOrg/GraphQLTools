@@ -164,15 +164,13 @@ extension Generator {
                         }
                     }
 
-                    if try !object.federationKeys().isEmpty { println() }
-                    try looped(object.federationKeys()) { key in
+                    let federationKeys = data.objectsWithFederationKeys
+                        .first(where: { $0.object.name.value == object.name.value })?.keys ?? []
+
+                    if !federationKeys.isEmpty { println() }
+                    try looped(federationKeys) { key in
                         try scoped("struct \(key.name): Codable, Sendable", scope: .curly) {
-                            for field in key.fields {
-                                let objectField = try object.field(named: field)
-                                try println(
-                                    "let \(objectField.name.value.escapedIfKeyword): \(swiftTypeName(objectField.type))"
-                                )
-                            }
+                            try printKeyFields(parentObject: object, fields: key.fields)
                         }
                     }
                 }
@@ -406,10 +404,12 @@ extension Generator {
                         }
                     }
                 }
-                for keys in try object.federationKeys() {
+                let federationKeys = data.objectsWithFederationKeys
+                    .first(where: { $0.object.name.value == object.name.value })?.keys ?? []
+                for keys in federationKeys {
                     scoped(".key(at: Resolver.\(object.name.value.lowercased().escapedIfKeyword))", scope: .curly) {
                         for field in keys.fields {
-                            println("Argument(\"\(field)\", at: \\.\(field.escapedIfKeyword))")
+                            println("Argument(\"\(field.name)\", at: \\.\(field.name.escapedIfKeyword))")
                         }
                     }
                 }
@@ -493,6 +493,46 @@ extension Generator {
                             "Argument(\"\(argument.name.value)\", at: \\.\(argument.name.value.escapedIfKeyword))")
                     }
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Federation Key Helpers
+extension Generator {
+    /// Recursively generates the contents of a federation Key struct.
+    /// Nested fields produce nested structs; leaf fields produce stored properties.
+    func printKeyFields(parentObject: ObjectTypeDefinition, fields: [KeyField]) throws {
+        // Pass 1: emit nested struct definitions for nested fields
+        for keyField in fields where !keyField.subFields.isEmpty {
+            let objectField = try parentObject.field(named: keyField.name)
+            guard let referencedTypeName = GeneratorData.namedTypeName(objectField.type) else {
+                throw GeneratorError(
+                    description:
+                        "Nested key field '\(keyField.name)' on '\(parentObject.name.value)' has a list type, which is not supported in federation keys"
+                )
+            }
+            guard let referencedObject = data.objectsByName[referencedTypeName] else {
+                throw GeneratorError(
+                    description:
+                        "Nested key field '\(keyField.name)' references type '\(referencedTypeName)' which is not a known object type"
+                )
+            }
+            try scoped("struct \(keyField.name.capitalizeFirst): Codable, Sendable", scope: .curly) {
+                try printKeyFields(parentObject: referencedObject, fields: keyField.subFields)
+            }
+        }
+        // Pass 2: emit stored property declarations
+        for keyField in fields {
+            let objectField = try parentObject.field(named: keyField.name)
+            if keyField.subFields.isEmpty {
+                try println(
+                    "let \(objectField.name.value.escapedIfKeyword): \(swiftTypeName(objectField.type))"
+                )
+            } else {
+                println(
+                    "let \(objectField.name.value.escapedIfKeyword): \(keyField.name.capitalizeFirst)"
+                )
             }
         }
     }

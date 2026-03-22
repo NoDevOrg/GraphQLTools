@@ -1,6 +1,13 @@
 import Foundation
 import GraphQL
 
+/// Represents a field in a federation @key directive.
+/// Leaf fields have empty `subFields`; nested fields have children.
+struct KeyField {
+    let name: String
+    let subFields: [KeyField]
+}
+
 struct GeneratorData {
     let schemaName: String
     let resolverName: String
@@ -13,7 +20,10 @@ struct GeneratorData {
     let queryFields: [FieldDefinition]
     let mutationFields: [FieldDefinition]
     let subscriptionFields: [FieldDefinition]
-    let objectsWithFederationKeys: [(object: ObjectTypeDefinition, keys: [(name: String, fields: [String])])]
+    let objectsWithFederationKeys: [(object: ObjectTypeDefinition, keys: [(name: String, fields: [KeyField])])]
+
+    /// Lookup from object type name to its definition.
+    let objectsByName: [String: ObjectTypeDefinition]
 
     /// Merged computed fields map: user overrides + auto-detected (union-typed fields, cycle-breaking).
     /// Key = object type name, Value = set of field names that should be computed.
@@ -105,6 +115,7 @@ struct GeneratorData {
         self.objectsWithFederationKeys = try definitions.objects
             .map { try ($0, $0.federationKeys()) }
             .filter { !$0.keys.isEmpty }
+        self.objectsByName = Dictionary(uniqueKeysWithValues: self.objects.map { ($0.name.value, $0) })
 
         // Build union lookup tables
         var unionMembers: [String: [String]] = [:]
@@ -443,7 +454,7 @@ extension ObjectTypeDefinition {
         return field
     }
 
-    func federationKeys() throws -> [(name: String, fields: [String])] {
+    func federationKeys() throws -> [(name: String, fields: [KeyField])] {
         let keyDirectives = directives.filter { $0.name.value == "key" }
 
         if keyDirectives.count == 1 {
@@ -457,7 +468,7 @@ extension ObjectTypeDefinition {
 }
 
 extension Directive {
-    func federationKeyFields() throws -> [String] {
+    func federationKeyFields() throws -> [KeyField] {
         guard let argument = arguments.first(where: { $0.name.value == "fields" }) else {
             throw GeneratorError(description: "Key directive missing fields argument")
         }
@@ -466,16 +477,53 @@ extension Directive {
             throw GeneratorError(description: "Key directive fields argument not a string")
         }
 
-        guard !value.contains("{"), !value.contains("}") else {
-            throw GeneratorError(description: "Key directive does not support nested keys")
-        }
-
-        let fields = value.split(separator: " ")
-        guard !fields.isEmpty else {
+        // Tokenize: split into name / { / } tokens
+        let tokens = value.split(separator: " ").map { String($0) }
+        guard !tokens.isEmpty else {
             throw GeneratorError(description: "Key directive fields argument is empty")
         }
 
-        return fields.map { String($0) }
+        var index = 0
+        let fields = try parseKeyFields(tokens: tokens, index: &index)
+
+        guard index == tokens.count else {
+            throw GeneratorError(description: "Unexpected token '\(tokens[index])' in key fields")
+        }
+
+        return fields
+    }
+
+    /// Recursively parse key field tokens into a [KeyField] tree.
+    /// Grammar: fields = field+ ; field = NAME ('{' fields '}')? ;
+    private func parseKeyFields(tokens: [String], index: inout Int) throws -> [KeyField] {
+        var fields: [KeyField] = []
+
+        while index < tokens.count && tokens[index] != "}" {
+            let name = tokens[index]
+
+            guard name != "{" else {
+                throw GeneratorError(description: "Unexpected '{' in key fields")
+            }
+
+            index += 1
+
+            // Check for optional nested block
+            if index < tokens.count && tokens[index] == "{" {
+                index += 1  // consume '{'
+                let subFields = try parseKeyFields(tokens: tokens, index: &index)
+
+                guard index < tokens.count && tokens[index] == "}" else {
+                    throw GeneratorError(description: "Missing closing '}' in key fields")
+                }
+                index += 1  // consume '}'
+
+                fields.append(KeyField(name: name, subFields: subFields))
+            } else {
+                fields.append(KeyField(name: name, subFields: []))
+            }
+        }
+
+        return fields
     }
 }
 
