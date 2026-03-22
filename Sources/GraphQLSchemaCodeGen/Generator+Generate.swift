@@ -101,6 +101,7 @@ extension Generator {
                 }
                 conformances += object.interfaces.map { $0.name.value.escapedIfKeyword }
                 conformances.append("Codable")
+                conformances.append("Sendable")
 
                 try scoped(
                     "struct \(object.name.value.escapedIfKeyword): \(conformances.joined(separator: ", "))",
@@ -119,7 +120,7 @@ extension Generator {
                         try looped(computedFields) { field in
                             if !field.arguments.isEmpty {
                                 try scoped(
-                                    "struct \(field.name.value.capitalizeFirst)Arguments: Codable",
+                                    "struct \(field.name.value.capitalizeFirst)Arguments: Codable, Sendable",
                                     scope: .curly
                                 ) {
                                     for argument in field.arguments {
@@ -132,7 +133,7 @@ extension Generator {
                             }
                             let argumentName = field.arguments.isEmpty ? "No" : field.name.value.capitalizeFirst
                             try scoped(
-                                "func _\(field.name.value.escapedIfKeyword)<ContextType>(context: ContextType, args: \(argumentName)Arguments) async throws -> \(swiftTypeName(field.type))",
+                                "func _\(field.name.value)<ContextType>(context: ContextType, args: \(argumentName)Arguments) async throws -> \(swiftTypeName(field.type))",
                                 scope: .curly
                             ) {
                                 scoped(
@@ -165,7 +166,7 @@ extension Generator {
 
                     if try !object.federationKeys().isEmpty { println() }
                     try looped(object.federationKeys()) { key in
-                        try scoped("struct \(key.name): Codable", scope: .curly) {
+                        try scoped("struct \(key.name): Codable, Sendable", scope: .curly) {
                             for field in key.fields {
                                 let objectField = try object.field(named: field)
                                 try println(
@@ -180,7 +181,7 @@ extension Generator {
                 println()
                 try looped(data.inputs) { object in
                     let keyword = data.classInputTypes.contains(object.name.value) ? "class" : "struct"
-                    try scoped("\(keyword) \(object.name.value.escapedIfKeyword): Codable", scope: .curly) {
+                    try scoped("\(keyword) \(object.name.value.escapedIfKeyword): Codable, Sendable", scope: .curly) {
                         for field in object.fields {
                             try println("let \(field.name.value.escapedIfKeyword): \(swiftTypeName(field.type))")
                         }
@@ -190,7 +191,7 @@ extension Generator {
             if !data.enums.isEmpty {
                 println()
                 looped(data.enums) { object in
-                    scoped("enum \(object.name.value.escapedIfKeyword): String, Codable", scope: .curly) {
+                    scoped("enum \(object.name.value.escapedIfKeyword): String, Codable, Sendable", scope: .curly) {
                         for value in object.values {
                             println(
                                 "case \(value.name.value.lowercased().escapedIfKeyword) = \"\(value.name.value)\"")
@@ -201,7 +202,7 @@ extension Generator {
             if !data.interfaces.isEmpty {
                 println()
                 try looped(data.interfaces) { interface in
-                    try scoped("protocol \(interface.name.value.escapedIfKeyword)", scope: .curly) {
+                    try scoped("protocol \(interface.name.value.escapedIfKeyword): Sendable", scope: .curly) {
                         for field in interface.fields {
                             try println(
                                 "var \(field.name.value.escapedIfKeyword): \(swiftTypeName(field.type)) { get }")
@@ -246,7 +247,7 @@ extension Generator {
         try scoped("extension \(data.schemaName)", scope: .curly) {
             try looped(data.queryFields + data.mutationFields + data.subscriptionFields) { field in
                 try scoped(
-                    "struct \(field.name.value.capitalizeFirst)Arguments: Codable", scope: .curly
+                    "struct \(field.name.value.capitalizeFirst)Arguments: Codable, Sendable", scope: .curly
                 ) {
                     for argument in field.arguments {
                         try println("let \(argument.name.value.escapedIfKeyword): \(swiftTypeName(argument.type))")
@@ -387,10 +388,10 @@ extension Generator {
                         let isComputed = !field.arguments.isEmpty || effectiveOverrides.contains(field.name.value)
                         if isComputed {
                             if field.arguments.isEmpty {
-                                println("Field(\"\(field.name.value)\", at: \(object.name.value.escapedIfKeyword)._\(field.name.value.escapedIfKeyword))")
+                                println("Field(\"\(field.name.value)\", at: \(object.name.value.escapedIfKeyword)._\(field.name.value))")
                             } else {
                                 scoped(
-                                    "Field(\"\(field.name.value)\", at: \(object.name.value.escapedIfKeyword)._\(field.name.value.escapedIfKeyword))",
+                                    "Field(\"\(field.name.value)\", at: \(object.name.value.escapedIfKeyword)._\(field.name.value))",
                                     scope: .curly
                                 ) {
                                     for argument in field.arguments {

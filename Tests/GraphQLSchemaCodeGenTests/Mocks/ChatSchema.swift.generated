@@ -54,12 +54,12 @@ extension ChatSchema {
 
 // MARK: - Types
 extension ChatSchema {
-  struct Message: Codable {
+  struct Message: Codable, Sendable {
     let id: ID
     let body: String
     let recieved: DateTime
 
-    struct Key: Codable {
+    struct Key: Codable, Sendable {
       let id: ID
     }
   }
@@ -67,16 +67,16 @@ extension ChatSchema {
 
 // MARK: - Resolver Arguments
 extension ChatSchema {
-  struct HistoryArguments: Codable {
+  struct HistoryArguments: Codable, Sendable {
     let room: String
   }
 
-  struct SendMessageArguments: Codable {
+  struct SendMessageArguments: Codable, Sendable {
     let room: String
     let message: String
   }
 
-  struct MessagesArguments: Codable {
+  struct MessagesArguments: Codable, Sendable {
     let room: String
   }
 }
