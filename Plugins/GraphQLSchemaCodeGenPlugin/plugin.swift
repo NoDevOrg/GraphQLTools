@@ -5,7 +5,7 @@ struct GraphQLSchemaCodeGenPlugin {
     /// Errors thrown by the `GraphQLSchemaCodeGenPlugin`
     enum PluginError: Error, CustomStringConvertible {
         /// Indicates that the target where the plugin was applied to was not `SourceModuleTarget`.
-        case invalidTarget(Target)
+        case invalidTarget(String)
         /// Indicates that the file extension of an input file was not `.graphqls`.
         case invalidInputFileExtension(String)
         /// Indicates that there was no configuration file at the required location.
@@ -13,8 +13,8 @@ struct GraphQLSchemaCodeGenPlugin {
 
         var description: String {
             switch self {
-            case let .invalidTarget(target):
-                return "Expected a SwiftSourceModuleTarget but got '\(type(of: target))'."
+            case let .invalidTarget(targetType):
+                return "Expected a SwiftSourceModuleTarget but got '\(targetType)'."
             case let .invalidInputFileExtension(path):
                 return "The input file '\(path)' does not have a '.graphqls' extension."
             case let .noConfigFound(path):
@@ -156,7 +156,7 @@ struct GraphQLSchemaCodeGenPlugin {
             -> [Command]
         {
             guard let swiftTarget = target as? SwiftSourceModuleTarget else {
-                throw PluginError.invalidTarget(target)
+                throw PluginError.invalidTarget("\(type(of: target))")
             }
             return try self.createBuildCommands(
                 pluginWorkDirectory: context.pluginWorkDirectory,
