@@ -1,13 +1,13 @@
 {
-  "originHash" : "ee5fa3e5eae50ec3dad1a23e7211840f03d098b7614c93aa8e0a1132acfb1e1a",
+  "originHash" : "251576ddd486de013fccbb62fbed140f44367616af40dd51b629a0199bef170f",
   "pins" : [
     {
       "identity" : "graphql",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/GraphQLSwift/GraphQL",
       "state" : {
-        "revision" : "3cf2dbce764e7ccff8447d0b7d4634c0438449d3",
-        "version" : "2.9.2"
+        "revision" : "a83766b34139a855476166b1dc44d9ae9d8ecff4",
+        "version" : "4.3.0"
       }
     },
     {
@@ -17,15 +17,6 @@
       "state" : {
         "revision" : "46989693916f56d1186bd59ac15124caef896560",
         "version" : "1.3.1"
-      }
-    },
-    {
-      "identity" : "swift-atomics",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-atomics.git",
-      "state" : {
-        "revision" : "cd142fd2f64be2100422d658e7411e39489da985",
-        "version" : "1.2.0"
       }
     },
     {
@@ -47,30 +38,12 @@
       }
     },
     {
-      "identity" : "swift-nio",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-nio.git",
-      "state" : {
-        "revision" : "fc63f0cf4e55a4597407a9fc95b16a2bc44b4982",
-        "version" : "2.64.0"
-      }
-    },
-    {
       "identity" : "swift-protobuf",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-protobuf",
       "state" : {
         "revision" : "9f0c76544701845ad98716f3f6a774a892152bcb",
         "version" : "1.26.0"
-      }
-    },
-    {
-      "identity" : "swift-system",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-system.git",
-      "state" : {
-        "revision" : "025bcb1165deab2e20d4eaba79967ce73013f496",
-        "version" : "1.2.1"
       }
     },
     {

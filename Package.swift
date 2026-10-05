@@ -10,7 +10,7 @@ package.platforms = [
 package.dependencies = [
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
     .package(url: "https://github.com/apple/swift-protobuf", from: "1.0.0"),
-    .package(url: "https://github.com/GraphQLSwift/GraphQL", from: "2.0.0"),
+    .package(url: "https://github.com/GraphQLSwift/GraphQL", from: "4.0.0"),
     .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "1.0.0"),
 ]
 

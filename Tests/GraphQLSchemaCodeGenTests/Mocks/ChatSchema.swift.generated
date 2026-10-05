@@ -88,7 +88,7 @@ extension ChatSchema {
 
     func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
     func sendMessage(context: ContextType, args: SendMessageArguments) async throws -> Message
-    func messages(context: ContextType, args: MessagesArguments) async throws -> EventStream<Message>
+    func messages(context: ContextType, args: MessagesArguments) async throws -> AsyncThrowingStream<Message, any Error>
     func message(context: ContextType, key: Message.Key) async throws -> Message?
   }
 }
@@ -103,7 +103,7 @@ extension ChatSchema.ChatResolver {
     throw ChatSchemaError(description: "Resolver for mutation.sendMessage is unimplemented.")
   }
 
-  func messages(context: ContextType, args: ChatSchema.MessagesArguments) async throws -> EventStream<ChatSchema.Message> {
+  func messages(context: ContextType, args: ChatSchema.MessagesArguments) async throws -> AsyncThrowingStream<ChatSchema.Message, any Error> {
     throw ChatSchemaError(description: "Resolver for subscription.messages is unimplemented.")
   }
 

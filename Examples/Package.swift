@@ -9,7 +9,7 @@ package.platforms = [
 
 package.dependencies = [
     .package(name: "GraphQLTools", path: "../"),
-    .package(url: "https://github.com/d-exclaimation/pioneer", from: "1.0.0"),
+    .package(url: "https://github.com/d-exclaimation/pioneer", from: "1.6.0"),
 ]
 
 package.targets = [
