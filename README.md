@@ -13,10 +13,46 @@ Add GraphQL Tools to your Package.swift
 ```swift
 let package = Package(
     dependencies: [
-        .package(url: "https://github.com/NoDevOrg/GraphQLTools", from: "1.0.0"),
+        .package(url: "https://github.com/NoDevOrg/GraphQLTools", from: "2.0.0"),
     ]
 )
 ```
+
+## Migrating from 1.x to 2.0
+
+2.0 generates code for the Swift Concurrency versions of the GraphQLSwift libraries. Your package needs at least these versions:
+
+| Package | Minimum version |
+| --- | --- |
+| Swift | 6.0 |
+| [GraphQL](https://github.com/GraphQLSwift/GraphQL) | 4.0.0 |
+| [Graphiti](https://github.com/GraphQLSwift/Graphiti) | 3.1.0 |
+| [Pioneer](https://github.com/d-exclaimation/pioneer) (if you use it) | 1.6.0 |
+
+Graphiti 3.1.0 uses `@retroactive`, which needs the Swift 6.0 compiler. GraphQLTools 2.0 builds with the Swift 6.0 toolchain but still compiles in the Swift 5 language mode, so your package doesn't have to adopt Swift 6 language mode. macOS 13 is still the minimum platform.
+
+GraphQL 4 removed `EventStream`, so generated subscription resolvers now return an `AsyncThrowingStream`. Update your subscription resolvers to match:
+
+```swift
+// 1.x
+func listenMessages(context: NoContext, args: ChatSchema.ListenMessagesArguments) async throws -> EventStream<ChatSchema.Message> {
+    pubsub
+        .asyncStream(for: args.room)
+        .toEventStream()
+}
+
+// 2.0
+func listenMessages(context: NoContext, args: ChatSchema.ListenMessagesArguments) async throws -> AsyncThrowingStream<ChatSchema.Message, any Error> {
+    pubsub.asyncStream(for: args.room)
+}
+```
+
+Graphiti 3 requires every field type to be `Sendable`. Generated interface and union protocols now inherit from `Sendable`, so the types that conform to them, including any custom types you map in with `typeMapping`, must be `Sendable` too.
+
+The GraphQL, Graphiti, and Pioneer migration guides cover the rest of the upgrade, such as removing `EventLoopGroup` arguments:
+
+- [GraphQL migration guide](https://github.com/GraphQLSwift/GraphQL/blob/main/MIGRATION.md)
+- [Graphiti migration guide](https://github.com/GraphQLSwift/Graphiti/blob/main/MIGRATION.md)
 
 ## CLI
 

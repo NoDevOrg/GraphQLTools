@@ -502,7 +502,7 @@ final class GeneratorTests: XCTestCase {
                 let name: String
               }
 
-              protocol Node {
+              protocol Node: Sendable {
                 var id: ID { get }
               }
             }
@@ -655,7 +655,7 @@ final class GeneratorTests: XCTestCase {
 
                 func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
                 func sendMessage(context: ContextType, args: SendMessageArguments) async throws -> Message
-                func messages(context: ContextType, args: MessagesArguments) async throws -> EventStream<Message>
+                func messages(context: ContextType, args: MessagesArguments) async throws -> AsyncThrowingStream<Message, any Error>
               }
             }
 
@@ -698,7 +698,7 @@ final class GeneratorTests: XCTestCase {
 
                 func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
                 func sendMessage(context: ContextType, args: SendMessageArguments) async throws -> Message
-                func messages(context: ContextType, args: MessagesArguments) async throws -> EventStream<Message>
+                func messages(context: ContextType, args: MessagesArguments) async throws -> AsyncThrowingStream<Message, any Error>
                 func message(context: ContextType, key: Message.Key) async throws -> Message?
               }
             }
@@ -747,7 +747,7 @@ final class GeneratorTests: XCTestCase {
 
                 func history(context: ContextType, args: HistoryArguments) async throws -> [Message]
                 func sendMessage(context: ContextType, args: SendMessageArguments) async throws -> Message
-                func messages(context: ContextType, args: MessagesArguments) async throws -> EventStream<Message>
+                func messages(context: ContextType, args: MessagesArguments) async throws -> AsyncThrowingStream<Message, any Error>
                 func message(context: ContextType, key: Message.Key0) async throws -> Message?
                 func message(context: ContextType, key: Message.Key1) async throws -> Message?
                 func user(context: ContextType, key: User.Key) async throws -> User?
@@ -796,7 +796,7 @@ final class GeneratorTests: XCTestCase {
                 throw GeneratedSchemaError(description: "Resolver for mutation.sendMessage is unimplemented.")
               }
 
-              func messages(context: ContextType, args: GeneratedSchema.MessagesArguments) async throws -> EventStream<GeneratedSchema.Message> {
+              func messages(context: ContextType, args: GeneratedSchema.MessagesArguments) async throws -> AsyncThrowingStream<GeneratedSchema.Message, any Error> {
                 throw GeneratedSchemaError(description: "Resolver for subscription.messages is unimplemented.")
               }
 

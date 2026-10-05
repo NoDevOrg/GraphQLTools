@@ -201,7 +201,7 @@ extension Generator {
             if !data.interfaces.isEmpty {
                 println()
                 try looped(data.interfaces) { interface in
-                    try scoped("protocol \(interface.name.value.escapedIfKeyword)", scope: .curly) {
+                    try scoped("protocol \(interface.name.value.escapedIfKeyword): Sendable", scope: .curly) {
                         for field in interface.fields {
                             try println(
                                 "var \(field.name.value.escapedIfKeyword): \(swiftTypeName(field.type)) { get }")
@@ -270,7 +270,7 @@ extension Generator {
                 }
                 for field in data.subscriptionFields {
                     try println(
-                        "func \(field.name.value.escapedIfKeyword)(context: ContextType, args: \(field.name.value.capitalizeFirst)Arguments) async throws -> EventStream<\(swiftTypeName(field.type))>"
+                        "func \(field.name.value.escapedIfKeyword)(context: ContextType, args: \(field.name.value.capitalizeFirst)Arguments) async throws -> AsyncThrowingStream<\(swiftTypeName(field.type)), any Error>"
                     )
                 }
                 for (object, keys) in data.objectsWithFederationKeys {
@@ -313,7 +313,7 @@ extension Generator {
             }
             try looped(data.subscriptionFields) { field in
                 try scoped(
-                    "func \(field.name.value.escapedIfKeyword)(context: ContextType, args: \(data.schemaName).\(field.name.value.capitalizeFirst)Arguments) async throws -> EventStream<\(swiftTypeName(field.type, namespace: data.schemaName))>",
+                    "func \(field.name.value.escapedIfKeyword)(context: ContextType, args: \(data.schemaName).\(field.name.value.capitalizeFirst)Arguments) async throws -> AsyncThrowingStream<\(swiftTypeName(field.type, namespace: data.schemaName)), any Error>",
                     scope: .curly
                 ) {
                     printThrowError(

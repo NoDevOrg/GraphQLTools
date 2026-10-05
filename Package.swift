@@ -1,4 +1,4 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(name: "GraphQLTools")
@@ -7,10 +7,12 @@ package.platforms = [
     .macOS(.v13)
 ]
 
+package.swiftLanguageModes = [.v5]
+
 package.dependencies = [
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
     .package(url: "https://github.com/apple/swift-protobuf", from: "1.0.0"),
-    .package(url: "https://github.com/GraphQLSwift/GraphQL", from: "2.0.0"),
+    .package(url: "https://github.com/GraphQLSwift/GraphQL", from: "4.0.0"),
     .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "1.0.0"),
 ]
 

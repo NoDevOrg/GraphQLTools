@@ -34,10 +34,8 @@ extension Resolver {
 
 // MARK: - Subscription Resolvers
 extension Resolver {
-    func listenMessages(context: NoContext, args: ChatSchema.ListenMessagesArguments) async throws -> EventStream<ChatSchema.Message> {
-        pubsub
-            .asyncStream(for: args.room)
-            .toEventStream()
+    func listenMessages(context: NoContext, args: ChatSchema.ListenMessagesArguments) async throws -> AsyncThrowingStream<ChatSchema.Message, any Error> {
+        pubsub.asyncStream(for: args.room)
     }
 }
 
