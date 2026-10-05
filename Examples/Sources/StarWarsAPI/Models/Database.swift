@@ -17,7 +17,7 @@ extension Application {
 
     private func createDatabase() -> Database {
         guard
-            let url = Bundle.module.url(forResource: "Database", withExtension: "json"),
+            let url = Bundle.module.url(forResource: "Database", withExtension: "json", subdirectory: "Data"),
             let data = try? Data(contentsOf: url),
             let database = try? JSONDecoder().decode(Database.self, from: data)
         else {

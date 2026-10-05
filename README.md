@@ -24,11 +24,12 @@ let package = Package(
 
 | Package | Minimum version |
 | --- | --- |
+| Swift | 6.0 |
 | [GraphQL](https://github.com/GraphQLSwift/GraphQL) | 4.0.0 |
-| [Graphiti](https://github.com/GraphQLSwift/Graphiti) | 3.0.0 |
+| [Graphiti](https://github.com/GraphQLSwift/Graphiti) | 3.1.0 |
 | [Pioneer](https://github.com/d-exclaimation/pioneer) (if you use it) | 1.6.0 |
 
-Swift 5.10 and macOS 13 are still the minimum toolchain and platform.
+Graphiti 3.1.0 uses `@retroactive`, which needs the Swift 6.0 compiler. GraphQLTools 2.0 builds with the Swift 6.0 toolchain but still compiles in the Swift 5 language mode, so your package doesn't have to adopt Swift 6 language mode. macOS 13 is still the minimum platform.
 
 GraphQL 4 removed `EventStream`, so generated subscription resolvers now return an `AsyncThrowingStream`. Update your subscription resolvers to match:
 
